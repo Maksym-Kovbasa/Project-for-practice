@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build APK (release)
+        run: flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Distribute to Firebase App Distribution (Android)
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' && secrets.FIREBASE_APP_ID_ANDROID != '' }}
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_APP_ID_ANDROID: ${{ secrets.FIREBASE_APP_ID_ANDROID }}
+          FIREBASE_TESTERS: ${{ secrets.FIREBASE_TESTERS }}
+          FIREBASE_GROUPS: ${{ secrets.FIREBASE_GROUPS }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase.json"
+          npm install -g firebase-tools
+          args=(--app "$FIREBASE_APP_ID_ANDROID" --release-notes "CI build $GITHUB_RUN_NUMBER ($GITHUB_SHA)" --service-account "$RUNNER_TEMP/firebase.json")
+          if [ -n "$FIREBASE_GROUPS" ]; then args+=(--groups "$FIREBASE_GROUPS"); fi
+          if [ -n "$FIREBASE_TESTERS" ]; then args+=(--testers "$FIREBASE_TESTERS"); fi
+          firebase appdistribution:distribute build/app/outputs/flutter-apk/app-release.apk "${args[@]}"
+
+  windows:
+    name: Build Windows EXE
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Enable Windows Desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Windows (release)
+        run: flutter build windows --release
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-windows-release
+          path: build/windows/runner/Release/
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs:
+      - android
+      - windows
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Package Windows build
+        run: |
+          cd dist/app-windows-release
+          zip -r ../windows-release.zip .
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: "ci-${{ github.run_number }}"
+          name: "CI Release ${{ github.run_number }}"
+          prerelease: true
+          artifacts: |
+            dist/app-android-apk/app-release.apk
+            dist/windows-release.zip
+          artifactErrorsFailBuild: true
