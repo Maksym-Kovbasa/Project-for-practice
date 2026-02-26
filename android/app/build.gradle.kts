@@ -24,7 +24,7 @@ android {
             if (keystoreProperties.isNotEmpty()) {
                 val storeFilePath = keystoreProperties["storeFile"] as String?
                 if (!storeFilePath.isNullOrBlank()) {
-                    storeFile = file(storeFilePath)
+                    storeFile = rootProject.file(storeFilePath)
                 }
                 storePassword = keystoreProperties["storePassword"] as String?
                 keyAlias = keystoreProperties["keyAlias"] as String?
