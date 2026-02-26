@@ -6,6 +6,14 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+import java.util.Properties
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
+}
+
 android {
     namespace = "com.example.project"
     compileSdk = flutter.compileSdkVersion
@@ -13,10 +21,15 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("release-key.jks")
-            storePassword = "releas_password_for_pr"
-            keyAlias = "release"
-            keyPassword = "releas_password_for_pr"
+            if (keystoreProperties.isNotEmpty()) {
+                val storeFilePath = keystoreProperties["storeFile"] as String?
+                if (!storeFilePath.isNullOrBlank()) {
+                    storeFile = file(storeFilePath)
+                }
+                storePassword = keystoreProperties["storePassword"] as String?
+                keyAlias = keystoreProperties["keyAlias"] as String?
+                keyPassword = keystoreProperties["keyPassword"] as String?
+            }
         }
     }
 
