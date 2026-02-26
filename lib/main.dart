@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'demo.dart';
-import 'auth/sqlite_auth_service.dart';
+import 'auth/firestore_auth_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
@@ -42,7 +45,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
-  final _authService = SqliteAuthService.instance;
+  final _authService = FirestoreAuthService.instance;
 
   static const Color _background = Color(0xFFE8EEF8);
   static const Color _cardBackground = Color(0xFFEAF0F8);
