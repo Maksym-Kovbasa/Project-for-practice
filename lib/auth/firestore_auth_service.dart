@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthException implements Exception {
   AuthException(this.message);
@@ -24,8 +25,11 @@ class FirestoreAuthService {
   static final FirestoreAuthService instance = FirestoreAuthService._();
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool _googleInitialized = false;
   CollectionReference<Map<String, dynamic>> get _users =>
       FirebaseFirestore.instance.collection('users');
+  CollectionReference<Map<String, dynamic>> get _usernames =>
+      FirebaseFirestore.instance.collection('usernames');
 
   Future<AuthUser> register({
     required String username,
@@ -33,16 +37,6 @@ class FirestoreAuthService {
     required String password,
   }) async {
     final usernameLower = username.toLowerCase();
-    final emailLower = email.toLowerCase();
-
-    final existingUsername = await _users
-        .where('usernameLower', isEqualTo: usernameLower)
-        .limit(1)
-        .get();
-    if (existingUsername.docs.isNotEmpty) {
-      throw AuthException('Username already exists.');
-    }
-
     try {
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -53,13 +47,19 @@ class FirestoreAuthService {
         throw AuthException('Failed to create account.');
       }
 
-      await _users.doc(uid).set({
-        'username': username,
-        'usernameLower': usernameLower,
-        'email': email,
-        'emailLower': emailLower,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      try {
+        await _createProfile(
+          uid: uid,
+          username: username,
+          email: email,
+        );
+      } on AuthException {
+        await _safeDeleteCurrentUser();
+        rethrow;
+      } on FirebaseException {
+        await _safeDeleteCurrentUser();
+        throw AuthException('Unable to save profile. Please try again.');
+      }
 
       return AuthUser(
         id: uid,
@@ -97,8 +97,10 @@ class FirestoreAuthService {
         throw AuthException('Invalid username or password.');
       }
 
-      final userDoc = await _users.doc(uid).get();
-      final data = userDoc.data() ?? <String, dynamic>{};
+      final data = await _getOrCreateProfileFromAuthUser(
+        uid: uid,
+        email: email,
+      );
       return AuthUser(
         id: uid,
         username: data['username'] as String? ?? loginKey,
@@ -109,15 +111,159 @@ class FirestoreAuthService {
     }
   }
 
+  Future<AuthUser> signInWithGoogle() async {
+    final googleUser = await _authenticateWithGoogle();
+    final googleAuth = googleUser.authentication;
+    final credential = GoogleAuthProvider.credential(
+      idToken: googleAuth.idToken,
+    );
+    try {
+      final result = await _auth.signInWithCredential(credential);
+      final user = result.user;
+      if (user == null) {
+        throw AuthException('Google sign-in failed.');
+      }
+
+      final data = await _getOrCreateProfileFromAuthUser(
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+      );
+
+      return AuthUser(
+        id: user.uid,
+        username: data['username'] as String? ?? 'user',
+        email: data['email'] as String? ?? (user.email ?? ''),
+      );
+    } on FirebaseAuthException catch (e) {
+      throw AuthException(_mapAuthError(e));
+    }
+  }
+
+  Future<GoogleSignInAccount> _authenticateWithGoogle() async {
+    if (!_googleInitialized) {
+      await GoogleSignIn.instance.initialize();
+      _googleInitialized = true;
+    }
+    try {
+      return await GoogleSignIn.instance.authenticate();
+    } on GoogleSignInException catch (e) {
+      throw AuthException(_mapGoogleError(e));
+    }
+  }
+
+  String _mapGoogleError(GoogleSignInException e) {
+    switch (e.code) {
+      case GoogleSignInExceptionCode.canceled:
+        return 'Google sign-in cancelled.';
+      case GoogleSignInExceptionCode.clientConfigurationError:
+      case GoogleSignInExceptionCode.providerConfigurationError:
+        return 'Google sign-in is not configured correctly.';
+      case GoogleSignInExceptionCode.uiUnavailable:
+        return 'Google sign-in UI is unavailable.';
+      case GoogleSignInExceptionCode.interrupted:
+        return 'Google sign-in was interrupted. Try again.';
+      case GoogleSignInExceptionCode.userMismatch:
+        return 'Google sign-in user mismatch.';
+      case GoogleSignInExceptionCode.unknownError:
+      default:
+        return 'Google sign-in failed. Please try again.';
+    }
+  }
+
+  Future<Map<String, dynamic>> _getOrCreateProfileFromAuthUser({
+    required String uid,
+    required String? email,
+    String? displayName,
+  }) async {
+    final doc = await _users.doc(uid).get();
+    if (doc.exists) {
+      return doc.data() ?? <String, dynamic>{};
+    }
+
+    final resolvedEmail = email ?? '';
+    final base = _usernameBase(displayName, resolvedEmail);
+    for (var i = 0; i < 5; i += 1) {
+      final suffix =
+          i == 0 ? '' : '${DateTime.now().millisecondsSinceEpoch % 10000}';
+      final candidate = '$base$suffix';
+      try {
+        await _createProfile(
+          uid: uid,
+          username: candidate,
+          email: resolvedEmail,
+        );
+        return {
+          'username': candidate,
+          'email': resolvedEmail,
+        };
+      } on AuthException {
+        continue;
+      } on FirebaseException {
+        throw AuthException('Unable to save profile. Please try again.');
+      }
+    }
+    throw AuthException('Unable to generate username. Try again.');
+  }
+
+  Future<void> _createProfile({
+    required String uid,
+    required String username,
+    required String email,
+  }) async {
+    final usernameLower = username.toLowerCase();
+    await FirebaseFirestore.instance.runTransaction((txn) async {
+      final usernameDoc = _usernames.doc(usernameLower);
+      final snapshot = await txn.get(usernameDoc);
+      if (snapshot.exists) {
+        throw AuthException('Username already exists.');
+      }
+
+      txn.set(usernameDoc, {
+        'uid': uid,
+        'username': username,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      txn.set(_users.doc(uid), {
+        'username': username,
+        'usernameLower': usernameLower,
+        'email': email,
+        'emailLower': email.toLowerCase(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
   Future<String?> _emailForUsername(String username) async {
-    final snapshot = await _users
-        .where('usernameLower', isEqualTo: username.toLowerCase())
-        .limit(1)
+    final usernameDoc = await _usernames
+        .doc(username.toLowerCase())
         .get();
-    if (snapshot.docs.isEmpty) {
+    if (!usernameDoc.exists) {
       return null;
     }
-    return snapshot.docs.first.data()['email'] as String?;
+    final uid = usernameDoc.data()?['uid'] as String?;
+    if (uid == null) {
+      return null;
+    }
+    final userDoc = await _users.doc(uid).get();
+    return userDoc.data()?['email'] as String?;
+  }
+
+  String _usernameBase(String? displayName, String? email) {
+    final source = (displayName?.trim().isNotEmpty ?? false)
+        ? displayName!
+        : (email?.split('@').first ?? 'user');
+    final normalized = source
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9_]'), '');
+    return normalized.isEmpty ? 'user' : normalized;
+  }
+
+  Future<void> _safeDeleteCurrentUser() async {
+    try {
+      await _auth.currentUser?.delete();
+    } catch (_) {}
   }
 
   String _mapAuthError(FirebaseAuthException e) {

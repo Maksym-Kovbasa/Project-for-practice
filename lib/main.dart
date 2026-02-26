@@ -152,6 +152,26 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    if (_isSubmitting) {
+      return;
+    }
+    setState(() => _isSubmitting = true);
+    try {
+      await _authService.signInWithGoogle();
+      if (!mounted) {
+        return;
+      }
+      _goToDashboard();
+    } on AuthException catch (e) {
+      _showMessage(e.message);
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
   void _goToRegistrationSuccess(String username) {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
@@ -342,7 +362,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 child: _socialButton(
                   icon: Icons.g_mobiledata_rounded,
                   label: 'Google',
-                  onTap: () {},
+                  onTap: _isSubmitting ? null : _handleGoogleSignIn,
                 ),
               ),
               const SizedBox(width: 12),
@@ -515,7 +535,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _socialButton({
     required IconData icon,
     required String label,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
   }) {
     return SizedBox(
       height: 50,
