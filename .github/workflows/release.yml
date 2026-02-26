@@ -27,11 +27,23 @@ jobs:
 
       - name: Decode keystore
         run: |
+          if [ -z "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "ANDROID_KEYSTORE_BASE64 is not set."
+            exit 1
+          fi
           mkdir -p android/app
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release-key.jks
+          if [ ! -s android/app/release-key.jks ]; then
+            echo "Decoded keystore is missing or empty."
+            exit 1
+          fi
 
       - name: Create key.properties
         run: |
+          if [ -z "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" ] || [ -z "${{ secrets.ANDROID_KEY_ALIAS }}" ] || [ -z "${{ secrets.ANDROID_KEY_PASSWORD }}" ]; then
+            echo "One or more keystore secrets are missing."
+            exit 1
+          fi
           cat > android/key.properties <<'EOF'
           storeFile=app/release-key.jks
           storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}

@@ -38,6 +38,7 @@ dependencies:
   cloud_firestore: any
   firebase_auth: any
   google_sign_in: ^7.2.0
+  meta: ^1.17.0
 
 dev_dependencies:
   flutter_test:
