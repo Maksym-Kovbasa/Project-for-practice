@@ -25,7 +25,7 @@ class DemoScreen extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: .fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Flutter Demo'),
     );
   }
 }
@@ -64,53 +64,187 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [
+              Color(0xFFF8FBFF),
+              Color(0xFFE7EEF8),
+            ],
+          ),
+        ),
+        child: Stack(
           children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+            Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 24),
+                child: _TopPanel(title: widget.title),
+              ),
+            ),
+            Align(
+              alignment: Alignment.center,
+              child: _CounterCard(
+                counter: _counter,
+                onIncrement: _incrementCounter,
+              ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+    );
+  }
+}
+
+class _TopPanel extends StatelessWidget {
+  const _TopPanel({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 350,
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4F8FF),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0xFFD6E0EE), width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x4AA9B9D0),
+            blurRadius: 22,
+            offset: Offset(10, 12),
+          ),
+          BoxShadow(
+            color: Color(0xC8FFFFFF),
+            blurRadius: 18,
+            offset: Offset(-8, -8),
+          ),
+        ],
+      ),
+      child: Text(
+        title,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 36,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF22344A),
+        ),
+      ),
+    );
+  }
+}
+
+class _CounterCard extends StatelessWidget {
+  const _CounterCard({
+    required this.counter,
+    required this.onIncrement,
+  });
+
+  final int counter;
+  final VoidCallback onIncrement;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 350,
+      padding: const EdgeInsets.fromLTRB(24, 34, 24, 30),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4F8FF),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0xFFD6E0EE), width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x4AA9B9D0),
+            blurRadius: 22,
+            offset: Offset(10, 12),
+          ),
+          BoxShadow(
+            color: Color(0xC8FFFFFF),
+            blurRadius: 18,
+            offset: Offset(-8, -8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'You have pushed the button this many times:',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              height: 1.35,
+              color: Color(0xFF7B8A9F),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '$counter',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 48,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF22344A),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _RoundIncrementButton(onPressed: onIncrement),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoundIncrementButton extends StatelessWidget {
+  const _RoundIncrementButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 94,
+      height: 94,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xFFE7FBF7),
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFFC6EEE7), width: 1),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x3620CDBA),
+              blurRadius: 18,
+              offset: Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Material(
+            color: const Color(0xFF20CDBA),
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onPressed,
+              child: const SizedBox(
+                width: 52,
+                height: 52,
+                child: Icon(
+                  Icons.my_location,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
