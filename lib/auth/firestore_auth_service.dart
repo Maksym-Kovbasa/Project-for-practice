@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart';
+import 'package:project/utils/error_logger.dart';
 
 class AuthException implements Exception {
   AuthException(this.message);
@@ -112,15 +114,17 @@ class FirestoreAuthService {
   }
 
   Future<AuthUser> signInWithGoogle() async {
-    final googleUser = await _authenticateWithGoogle();
-    final googleAuth = googleUser.authentication;
-    final credential = GoogleAuthProvider.credential(
-      idToken: googleAuth.idToken,
-    );
     try {
+      final googleUser = await _authenticateWithGoogle();
+      final googleAuth = googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        idToken: googleAuth.idToken,
+      );
       final result = await _auth.signInWithCredential(credential);
       final user = result.user;
       if (user == null) {
+        debugPrint('Google sign-in: Firebase returned null user.');
+        await ErrorLogger.append('Google sign-in: Firebase returned null user.');
         throw AuthException('Google sign-in failed.');
       }
 
@@ -136,19 +140,43 @@ class FirestoreAuthService {
         email: data['email'] as String? ?? (user.email ?? ''),
       );
     } on FirebaseAuthException catch (e) {
+      debugPrint(
+        'Google sign-in: FirebaseAuthException code=${e.code} message=${e.message}',
+      );
+      await ErrorLogger.append(
+        'Google sign-in: FirebaseAuthException code=${e.code} message=${e.message}',
+      );
       throw AuthException(_mapAuthError(e));
+    } catch (e, stack) {
+      debugPrint('Google sign-in: unexpected error $e');
+      debugPrint('$stack');
+      await ErrorLogger.append('Google sign-in: unexpected error $e');
+      rethrow;
     }
   }
 
   Future<GoogleSignInAccount> _authenticateWithGoogle() async {
     if (!_googleInitialized) {
+      debugPrint('Google sign-in: initializing GoogleSignIn.');
       await GoogleSignIn.instance.initialize();
       _googleInitialized = true;
     }
     try {
+      debugPrint('Google sign-in: starting GoogleSignIn.authenticate().');
       return await GoogleSignIn.instance.authenticate();
     } on GoogleSignInException catch (e) {
+      debugPrint(
+        'Google sign-in: GoogleSignInException code=${e.code} message=${e.description}',
+      );
+      await ErrorLogger.append(
+        'Google sign-in: GoogleSignInException code=${e.code} message=${e.description}',
+      );
       throw AuthException(_mapGoogleError(e));
+    } catch (e, stack) {
+      debugPrint('Google sign-in: unexpected error $e');
+      debugPrint('$stack');
+      await ErrorLogger.append('Google sign-in: unexpected error $e');
+      rethrow;
     }
   }
 
