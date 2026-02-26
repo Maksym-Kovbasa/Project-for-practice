@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const Demo());
-}
+class DemoScreen extends StatelessWidget {
+  const DemoScreen({super.key});
 
-class Demo extends StatelessWidget {
-  const Demo({super.key});
-
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

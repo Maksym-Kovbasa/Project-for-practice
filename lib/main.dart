@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'demo.dart';
+import 'auth/sqlite_auth_service.dart';
 
 void main() {
   runApp(const MyApp());
@@ -22,7 +24,9 @@ class MyApp extends StatelessWidget {
 }
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  const AuthScreen({super.key, this.initialSignIn = true});
+
+  final bool initialSignIn;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -30,11 +34,15 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   bool _isSignIn = true;
+  bool _isSubmitting = false;
+  bool _hidePassword = true;
+  bool _hideConfirmPassword = true;
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
+  final _authService = SqliteAuthService.instance;
 
   static const Color _background = Color(0xFFE8EEF8);
   static const Color _cardBackground = Color(0xFFEAF0F8);
@@ -43,6 +51,12 @@ class _AuthScreenState extends State<AuthScreen> {
   static const Color _textHint = Color(0xFF7B8A9F);
   static const Color _fieldHint = Color(0xFF8A9AAF);
   static const Duration _switchDuration = Duration(milliseconds: 260);
+
+  @override
+  void initState() {
+    super.initState();
+    _isSignIn = widget.initialSignIn;
+  }
 
   @override
   void dispose() {
@@ -63,11 +77,103 @@ class _AuthScreenState extends State<AuthScreen> {
       _emailController.clear();
       _passwordController.clear();
       _confirmPasswordController.clear();
+      _hidePassword = true;
+      _hideConfirmPassword = true;
     });
   }
 
   void _toggleMode() {
     _setMode(!_isSignIn);
+  }
+
+  Future<void> _handleAuthAction() async {
+    if (_isSubmitting) {
+      return;
+    }
+    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    if (username.isEmpty || password.isEmpty) {
+      _showMessage('Username and password are required.');
+      return;
+    }
+    if (!_isSignIn) {
+      if (email.isEmpty) {
+        _showMessage('Email address is required.');
+        return;
+      }
+      if (!_isValidEmail(email)) {
+        _showMessage('Please enter a valid email address.');
+        return;
+      }
+      if (password != confirmPassword) {
+        _showMessage('Passwords do not match.');
+        return;
+      }
+      if (password.length < 6) {
+        _showMessage('Password must be at least 6 characters.');
+        return;
+      }
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      if (_isSignIn) {
+        final user = await _authService.login(
+          username: username,
+          password: password,
+        );
+        if (!mounted) {
+          return;
+        }
+        _goToDashboard();
+      } else {
+        final user = await _authService.register(
+          username: username,
+          email: email,
+          password: password,
+        );
+        if (!mounted) {
+          return;
+        }
+        _goToRegistrationSuccess(user.username);
+      }
+    } on AuthException catch (e) {
+      _showMessage(e.message);
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  void _goToRegistrationSuccess(String username) {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => RegistrationSuccessScreen(username: username),
+      ),
+    );
+  }
+
+  void _goToDashboard() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => DemoScreen(),
+      ),
+    );
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  bool _isValidEmail(String email) {
+    const emailPattern = r'^[\w\.\-]+@[\w\-]+\.[A-Za-z]{2,}$';
+    return RegExp(emailPattern).hasMatch(email);
   }
 
   @override
@@ -171,6 +277,18 @@ class _AuthScreenState extends State<AuthScreen> {
                   icon: Icons.lock_outline_rounded,
                   hint: 'password',
                   controller: _passwordController,
+                  obscureText: _hidePassword,
+                  suffixIcon: IconButton(
+                    onPressed: () {
+                      setState(() => _hidePassword = !_hidePassword);
+                    },
+                    icon: Icon(
+                      _hidePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: _fieldHint,
+                    ),
+                  ),
                 ),
                 if (!_isSignIn) ...[
                   const SizedBox(height: 14),
@@ -178,6 +296,20 @@ class _AuthScreenState extends State<AuthScreen> {
                     icon: Icons.lock_outline_rounded,
                     hint: 'confirm password',
                     controller: _confirmPasswordController,
+                    obscureText: _hideConfirmPassword,
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        setState(
+                          () => _hideConfirmPassword = !_hideConfirmPassword,
+                        );
+                      },
+                      icon: Icon(
+                        _hideConfirmPassword
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        color: _fieldHint,
+                      ),
+                    ),
                   ),
                 ],
               ],
@@ -308,6 +440,8 @@ class _AuthScreenState extends State<AuthScreen> {
     required IconData icon,
     required String hint,
     required TextEditingController controller,
+    bool obscureText = false,
+    Widget? suffixIcon,
   }) {
     return Container(
       height: 56,
@@ -330,10 +464,12 @@ class _AuthScreenState extends State<AuthScreen> {
       ),
       child: TextField(
         controller: controller,
+        obscureText: obscureText,
         decoration: InputDecoration(
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 16),
           prefixIcon: Icon(icon, color: _accent),
+          suffixIcon: suffixIcon,
           hintText: hint,
           hintStyle: const TextStyle(color: _fieldHint),
         ),
@@ -347,7 +483,7 @@ class _AuthScreenState extends State<AuthScreen> {
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: () {},
+        onPressed: _isSubmitting ? null : _handleAuthAction,
         style: ElevatedButton.styleFrom(
           backgroundColor: _accent,
           foregroundColor: Colors.white,
@@ -356,10 +492,19 @@ class _AuthScreenState extends State<AuthScreen> {
             borderRadius: BorderRadius.circular(28),
           ),
         ),
-        child: Text(
-          label,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-        ),
+        child: _isSubmitting
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  color: Colors.white,
+                ),
+              )
+            : Text(
+                label,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
       ),
     );
   }
@@ -387,6 +532,162 @@ class _AuthScreenState extends State<AuthScreen> {
             borderRadius: BorderRadius.circular(14),
           ),
           backgroundColor: _background,
+        ),
+      ),
+    );
+  }
+}
+
+class RegistrationSuccessScreen extends StatelessWidget {
+  const RegistrationSuccessScreen({super.key, required this.username});
+
+  final String username;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFF2F7FF), Color(0xFFE3EBF7)],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 402),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(24, 34, 24, 30),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAF0F8),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: const Color(0xFFD6E0EE)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0xFFFFFFFF),
+                        offset: Offset(-8, -8),
+                        blurRadius: 18,
+                      ),
+                      BoxShadow(
+                        color: Color(0xB5C8D5EA),
+                        offset: Offset(8, 8),
+                        blurRadius: 18,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 94,
+                        height: 94,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE7FBF7),
+                          borderRadius: BorderRadius.circular(47),
+                          border: Border.all(color: const Color(0xFFC6EEE7)),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x3620CDBA),
+                              offset: Offset(0, 8),
+                              blurRadius: 18,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.check_circle_rounded,
+                          size: 52,
+                          color: Color(0xFF20CDBA),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Registration Successful',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 36,
+                          height: 1,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF22344A),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Your account "$username" was created.\nPlease sign in to continue.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          height: 1.35,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF7B8A9F),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(
+                                builder: (context) => DemoScreen(),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF20CDBA),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(28),
+                            ),
+                          ),
+                          child: const Text(
+                            'Continue',
+                            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (_) => const AuthScreen(initialSignIn: true),
+                              ),
+                              (route) => false,
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: const Color(0xFFEEF3FB),
+                            side: const BorderSide(color: Color(0xFFD6DFED)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: const Text(
+                            'Back to Login',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF39506B),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
