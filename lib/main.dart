@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'demo.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'voice_agent/app.dart';
 import 'auth/firestore_auth_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await dotenv.load(fileName: '.env');
   runApp(const MyApp());
 }
 
@@ -183,7 +185,7 @@ class _AuthScreenState extends State<AuthScreen> {
   void _goToDashboard() {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (context) => DemoScreen(),
+        builder: (context) => const VoiceAssistantApp(),
       ),
     );
   }
@@ -657,7 +659,7 @@ class RegistrationSuccessScreen extends StatelessWidget {
                           onPressed: () {
                             Navigator.of(context).pushReplacement(
                               MaterialPageRoute(
-                                builder: (context) => DemoScreen(),
+                                builder: (context) => const VoiceAssistantApp(),
                               ),
                             );
                           },

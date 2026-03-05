@@ -21,6 +21,15 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+      - name: Create .env for LiveKit
+        run: |
+          if [ -z "${{ secrets.LIVEKIT_SANDBOX_ID }}" ]; then
+            echo "LIVEKIT_SANDBOX_ID is not set. Add it in GitHub Actions secrets."
+            exit 1
+          fi
+          cat > .env <<EOF
+          LIVEKIT_SANDBOX_ID=${{ secrets.LIVEKIT_SANDBOX_ID }}
+          EOF
 
       - name: Install dependencies
         run: flutter pub get
@@ -99,3 +108,4 @@ jobs:
           artifacts: |
             dist/app-android-apk/app-release.apk
           artifactErrorsFailBuild: true
+
