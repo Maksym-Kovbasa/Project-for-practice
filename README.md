@@ -1,79 +1,80 @@
 # Project for Practice
 
-Flutter auth UI project (designed in Pencil first, then implemented in code), currently using SQLite for local authentication.
+Flutter mobile app with Firebase authentication and an embedded LiveKit voice-agent client.
 
-## Work Completed
+## Current Architecture
 
-### 1) Auth UI and UX
-- Built a custom light-mode authentication design inspired by the provided reference.
-- Added both Sign In and Sign Up states.
-- Added social login buttons (Google/Facebook visuals).
-- Added smooth transitions between Sign In and Sign Up.
-- Ensured form fields are cleared when switching auth modes.
-- Added password visibility toggles for password and confirm password.
+- Frontend: Flutter app in `lib/`
+- Auth: Firebase Auth (+ Firestore-related auth service)
+- Voice agent client: `lib/voice_agent/`
+- Agent backend (separate project): `C:\Users\username\voice\agent-starter-node`
+- Persistent memory store: Neon Postgres (handled by backend)
 
-### 2) Pencil design updates
-- File: `C:\Users\8887\Downloads\empty.pen`
-- Created and refined phone-sized frames:
-  - `Phone - Sign In`
-  - `Phone - Sign Up`
-  - `Phone - Registration Success`
-- Synced Pencil designs multiple times to match live Flutter behavior and copy updates.
+## Voice Agent Integration
 
-### 3) Registration success flow
-- Added a custom success screen after registration.
-- Current buttons on success screen:
-  - `Continue`
-  - `Back to Login`
+The app launches the voice assistant directly after auth and connects to LiveKit using a sandbox token source.
 
-### 4) Auth logic (migrated from in-memory to SQLite)
-- Replaced temporary in-memory user store with SQLite-backed auth service.
-- New file: `lib/auth/sqlite_auth_service.dart`
-- Uses `sqflite` + `path`.
-- Creates local DB `auth.db` with `users` table.
-- Includes seeded demo user:
-  - username: `demo`
-  - password: `demo123`
-  - email: `demo@example.com`
+Key points:
+- Uses authenticated Firebase user `uid` as LiveKit participant identity.
+- Sends identity attributes (`user_id`, `uid`, optional `email`) so backend can scope memory per user.
+- Registers RPC handler `client.agentFieldUpdate` to receive agent-driven updates.
+- Displays user profile fields in UI from backend sync events.
 
-### 5) Validation rules implemented
-- Sign Up:
-  - username required
-  - email required
-  - email format required
-  - password required
-  - password length >= 6
-  - password must match confirm password
-- Sign In:
-  - username required
-  - password required
+Implemented RPC actions:
+- `profile_sync`: full profile state from backend
+- `field_updated`: incremental/new captured preference
+- `memory_cleared`: clear profile state in app immediately
 
-### 6) Navigation behavior (current)
-- Successful Sign Up -> `RegistrationSuccessScreen`
-- `Continue` on success screen -> `DemoScreen` (`lib/demo.dart`)
-- `Back to Login` -> Auth screen in Sign In mode
-- Successful Sign In -> `DemoScreen`
+## Backend Contract (agent-starter-node)
 
-### 7) Demo screen target
-- `lib/demo.dart` now contains `DemoScreen` and is used as the post-auth destination.
+The backend agent currently supports these tool-driven flows:
+- `update_field(field, value)` -> stores user preference in Neon and notifies frontend
+- `perform_rpc_to_frontend(action, payloadJson)` -> sends explicit UI updates
+- `clear_user_memory()` -> deletes user profile + conversation memory for the current user
 
-## Current File Highlights
-- Main app and auth UI/flow: `lib/main.dart`
-- SQLite auth service: `lib/auth/sqlite_auth_service.dart`
-- Post-auth destination: `lib/demo.dart`
+Memory tables (backend side):
+- `conversation_memory` (default)
+- `user_profile_memory` (default)
 
-## Setup Notes
-After pulling/installing, run:
+## Environment
+
+Required app env:
+- `.env` with `LIVEKIT_SANDBOX_ID`
+
+Required Firebase setup:
+- `google-services.json` / platform Firebase config
+- valid Firebase Auth project configuration
+
+Backend env (in `agent-starter-node`):
+- `LIVEKIT_URL`
+- `LIVEKIT_API_KEY`
+- `LIVEKIT_API_SECRET`
+- `NEON_DATABASE_URL` (or `DATABASE_URL`)
+
+## Run
+
+Install dependencies:
 
 ```bash
 flutter pub get
 ```
 
-Then run the app as usual:
+Run app:
 
 ```bash
 flutter run
 ```
 
-## Planned next step
-- Replace local SQLite auth with a remote/backend auth provider in future (keeping the same service abstraction approach).
+Run backend agent (separately):
+
+```bash
+cd C:\Users\username\voice\agent-starter-node
+pnpm install
+pnpm run dev
+```
+
+## Important Notes
+
+- App and backend must use compatible LiveKit project credentials.
+- User memory persistence and memory clearing are executed on backend; app reflects state via RPC.
+- If session reconnect behavior changes, verify session lifecycle in `lib/voice_agent/controllers/app_ctrl.dart`.

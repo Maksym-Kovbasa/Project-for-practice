@@ -93,6 +93,10 @@ class AppCtrl extends ChangeNotifier {
   bool isSendButtonEnabled = false;
   bool isSessionStarting = false;
   bool _hasCleanedUp = false;
+  final Map<String, List<String>> _profileFields = {};
+
+  Map<String, List<String>> get profileFields =>
+      Map<String, List<String>>.unmodifiable(_profileFields);
 
   AppCtrl() {
     final format = DateFormat('HH:mm:ss');
@@ -110,6 +114,7 @@ class AppCtrl extends ChangeNotifier {
       }
     });
 
+    room.registerRpcMethod('client.agentFieldUpdate', _handleAgentFieldUpdate);
     session.addListener(_handleSessionChange);
   }
 
@@ -118,6 +123,7 @@ class AppCtrl extends ChangeNotifier {
     _hasCleanedUp = true;
 
     session.removeListener(_handleSessionChange);
+    room.unregisterRpcMethod('client.agentFieldUpdate');
     await session.dispose();
     await room.dispose();
     roomContext.dispose();
@@ -214,6 +220,59 @@ class AppCtrl extends ChangeNotifier {
       appScreenState = nextScreen;
       notifyListeners();
     }
+  }
+
+  Future<String> _handleAgentFieldUpdate(sdk.RpcInvocationData data) async {
+    try {
+      final decoded = jsonDecode(data.payload);
+      if (decoded is! Map<String, dynamic>) {
+        return 'ignored: invalid payload';
+      }
+      final action = decoded['action']?.toString();
+      if (action == 'profile_sync' || action == 'field_updated') {
+        final fields = decoded['fields'];
+        if (fields is Map<String, dynamic>) {
+          _profileFields
+            ..clear()
+            ..addAll(_coerceProfileFields(fields));
+        } else {
+          final field = decoded['field']?.toString();
+          final value = decoded['value']?.toString();
+          if (field != null && field.isNotEmpty && value != null && value.isNotEmpty) {
+            final existing = _profileFields[field] ?? <String>[];
+            if (!existing.any((item) => item.toLowerCase() == value.toLowerCase())) {
+              _profileFields[field] = [...existing, value];
+            }
+          }
+        }
+        notifyListeners();
+      } else if (action == 'memory_cleared') {
+        _profileFields.clear();
+        notifyListeners();
+      }
+      return 'ok';
+    } catch (error) {
+      _logger.warning('Failed to process RPC payload: $error');
+      return 'error: invalid payload';
+    }
+  }
+
+  Map<String, List<String>> _coerceProfileFields(Map<String, dynamic> raw) {
+    final result = <String, List<String>>{};
+    raw.forEach((key, value) {
+      if (value is List) {
+        final values = value
+            .map((item) => item?.toString().trim() ?? '')
+            .where((item) => item.isNotEmpty)
+            .toList();
+        if (values.isNotEmpty) {
+          result[key] = values;
+        }
+      } else if (value is String && value.trim().isNotEmpty) {
+        result[key] = [value.trim()];
+      }
+    });
+    return result;
   }
 }
 

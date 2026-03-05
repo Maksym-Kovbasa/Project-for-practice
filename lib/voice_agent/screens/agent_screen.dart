@@ -156,6 +156,12 @@ class AgentScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.max,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Selector<AppCtrl, Map<String, List<String>>>(
+                  selector: (ctx, appCtrl) => appCtrl.profileFields,
+                  builder: (context, fields, _) => fields.isEmpty
+                      ? const SizedBox.shrink()
+                      : _UserProfilePanel(fields: fields),
+                ),
                 Expanded(
                   child: GestureDetector(
                     onTap: () => ctx.read<AppCtrl>().messageFocusNode.unfocus(),
@@ -241,6 +247,39 @@ class _MessageBubble extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _UserProfilePanel extends StatelessWidget {
+  const _UserProfilePanel({required this.fields});
+
+  final Map<String, List<String>> fields;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: fields.entries.map((entry) {
+          final label = entry.key.replaceAll('_', ' ');
+          final joined = entry.value.join(', ');
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(
+              '$label: $joined',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          );
+        }).toList(),
       ),
     );
   }
