@@ -7,9 +7,12 @@ import 'package:provider/provider.dart';
 
 import '../controllers/app_ctrl.dart';
 import '../support/agent_selector.dart';
+import '../ui/color_pallette.dart';
 import '../widgets/agent_layout_switcher.dart';
 import '../widgets/camera_toggle_button.dart';
 import '../widgets/message_bar.dart';
+import 'links_screen.dart';
+import 'remembered_data_screen.dart';
 
 class AgentTrackView extends StatelessWidget {
   const AgentTrackView({super.key});
@@ -108,99 +111,173 @@ class AgentScreen extends StatelessWidget {
   const AgentScreen({super.key});
 
   @override
-  Widget build(BuildContext ctx) => Material(
-        child: Selector<AppCtrl, AgentLayoutState>(
+  Widget build(BuildContext ctx) => Scaffold(
+        backgroundColor: const Color(0xFFF8FBFF),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFF2F7FF), Color(0xFFE3EBF7)],
+            ),
+          ),
+          child: Selector<AppCtrl, AgentLayoutState>(
           selector: (ctx, appCtrl) => AgentLayoutState(
             isTranscriptionVisible: appCtrl.agentScreenState == AgentScreenState.transcription,
             isCameraVisible: appCtrl.isUserCameEnabled,
             isScreenshareVisible: appCtrl.isScreenshareEnabled,
           ),
-          builder: (ctx, agentLayoutState, child) => AgentLayoutSwitcher(
-            layoutState: agentLayoutState,
-            // agentViewBuilder: (ctx) => AgentTrackView(),
-            buildAgentView: (ctx) => const AgentTrackView(),
-            buildCameraView: (ctx) => Container(
-              clipBehavior: Clip.hardEdge,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: components.MediaDeviceContextBuilder(
-                builder: (context, roomCtx, mediaDeviceCtx) => components.ParticipantSelector(
-                  filter: (identifier) => identifier.isVideo && identifier.isLocal,
-                  builder: (context, identifier) => Stack(
-                    children: [
-                      components.VideoTrackWidget(
-                        fit: sdk.VideoViewFit.cover,
-                        noTrackBuilder: (ctx) => Container(color: Theme.of(ctx).cardColor),
+          builder: (ctx, agentLayoutState, child) => SizedBox.expand(
+            child: Stack(
+              children: [
+                AgentLayoutSwitcher(
+                  layoutState: agentLayoutState,
+                  // agentViewBuilder: (ctx) => AgentTrackView(),
+                  buildAgentView: (ctx) => const AgentTrackView(),
+                  buildCameraView: (ctx) => Container(
+                    clipBehavior: Clip.hardEdge,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: components.MediaDeviceContextBuilder(
+                      builder: (context, roomCtx, mediaDeviceCtx) => components.ParticipantSelector(
+                        filter: (identifier) => identifier.isVideo && identifier.isLocal,
+                        builder: (context, identifier) => Stack(
+                          children: [
+                            components.VideoTrackWidget(
+                              fit: sdk.VideoViewFit.cover,
+                              noTrackBuilder: (ctx) => Container(color: Theme.of(ctx).cardColor),
+                            ),
+                            Positioned(
+                              right: 10,
+                              bottom: 10,
+                              child: CameraToggleButton(
+                                onTap: () => mediaDeviceCtx.toggleCameraPosition(),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      Positioned(
-                        right: 10,
-                        bottom: 10,
-                        child: CameraToggleButton(
-                          onTap: () => mediaDeviceCtx.toggleCameraPosition(),
+                    ),
+                  ),
+                  buildScreenShareView: (ctx) => Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.3),
+                    ),
+                    child: const Text('Screenshare View'),
+                  ),
+                  transcriptionsBuilder: (ctx) => Column(
+                    mainAxisSize: MainAxisSize.max,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Selector<AppCtrl, Map<String, List<String>>>(
+                        selector: (ctx, appCtrl) => appCtrl.profileFields,
+                        builder: (context, fields, _) => fields.isEmpty
+                            ? const SizedBox.shrink()
+                            : _UserProfilePanel(fields: fields),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => ctx.read<AppCtrl>().messageFocusNode.unfocus(),
+                          child: Consumer<sdk.Session>(
+                            builder: (context, session, _) {
+                              if (session.messages.isEmpty) {
+                                return _AgentListeningPlaceholder(canListen: session.agent.canListen);
+                              }
+                              return components.ChatScrollView(
+                                session: session,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                                physics: const BouncingScrollPhysics(),
+                                messageBuilder: (context, message) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: _MessageBubble(message: message),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.only(
+                            left: 16,
+                            right: 16,
+                            bottom: max(0, MediaQuery.of(ctx).viewInsets.bottom - 80)),
+                        child: Selector<AppCtrl, bool>(
+                          selector: (ctx, appCtx) => appCtx.isSendButtonEnabled,
+                          builder: (ctx, isSendEnabled, child) => MessageBar(
+                            focusNode: ctx.read<AppCtrl>().messageFocusNode,
+                            isSendEnabled: isSendEnabled,
+                            controller: ctx.read<AppCtrl>().messageCtrl,
+                            onSendTap: () => ctx.read<AppCtrl>().sendMessage(),
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ),
-            buildScreenShareView: (ctx) => Container(
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.3),
-              ),
-              child: const Text('Screenshare View'),
-            ),
-            transcriptionsBuilder: (ctx) => Column(
-              mainAxisSize: MainAxisSize.max,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Selector<AppCtrl, Map<String, List<String>>>(
-                  selector: (ctx, appCtrl) => appCtrl.profileFields,
-                  builder: (context, fields, _) => fields.isEmpty
-                      ? const SizedBox.shrink()
-                      : _UserProfilePanel(fields: fields),
-                ),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => ctx.read<AppCtrl>().messageFocusNode.unfocus(),
-                    child: Consumer<sdk.Session>(
-                      builder: (context, session, _) {
-                        if (session.messages.isEmpty) {
-                          return _AgentListeningPlaceholder(canListen: session.agent.canListen);
-                        }
-                        return components.ChatScrollView(
-                          session: session,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                          physics: const BouncingScrollPhysics(),
-                          messageBuilder: (context, message) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _MessageBubble(message: message),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding:
-                      EdgeInsets.only(left: 16, right: 16, bottom: max(0, MediaQuery.of(ctx).viewInsets.bottom - 80)),
-                  child: Selector<AppCtrl, bool>(
-                    selector: (ctx, appCtx) => appCtx.isSendButtonEnabled,
-                    builder: (ctx, isSendEnabled, child) => MessageBar(
-                      focusNode: ctx.read<AppCtrl>().messageFocusNode,
-                      isSendEnabled: isSendEnabled,
-                      controller: ctx.read<AppCtrl>().messageCtrl,
-                      onSendTap: () => ctx.read<AppCtrl>().sendMessage(),
-                    ),
+                Positioned(
+                  top: 26,
+                  left: 16,
+                  right: 16,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Selector<AppCtrl, Map<String, List<String>>>(
+                        selector: (ctx, appCtrl) => appCtrl.profileFields,
+                        builder: (ctx, fields, _) {
+                          // Count all entries except the links array
+                          final count = fields.keys.where((k) => k != 'recommended_links').length;
+                          final theme = Theme.of(ctx);
+                          final palette = theme.brightness == Brightness.light ? LKColorPaletteLight() : LKColorPaletteDark();
+                          return ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              shape: const StadiumBorder(),
+                              elevation: 2,
+                              backgroundColor: count > 0 ? const Color(0xFFD6E4FF) : palette.bg2,
+                              foregroundColor: count > 0 ? const Color(0xFF002CF2) : palette.fg0,
+                            ),
+                            icon: const Icon(Icons.storage_rounded),
+                            label: Text(count > 0 ? 'Remembered ($count)' : 'Remembered'),
+                            onPressed: count == 0
+                                ? null
+                                : () => Navigator.of(ctx).push(
+                                      MaterialPageRoute(builder: (_) => const RememberedDataScreen()),
+                                    ),
+                          );
+                        },
+                      ),
+                      Selector<AppCtrl, List<String>>(
+                        selector: (ctx, appCtrl) => appCtrl.profileFields['recommended_links'] ?? [],
+                        builder: (ctx, links, _) {
+                          final theme = Theme.of(ctx);
+                          final palette = theme.brightness == Brightness.light ? LKColorPaletteLight() : LKColorPaletteDark();
+                          return ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              shape: const StadiumBorder(),
+                              elevation: 2,
+                              backgroundColor: links.isNotEmpty ? const Color(0xFFD6E4FF) : palette.bg2,
+                              foregroundColor: links.isNotEmpty ? const Color(0xFF002CF2) : palette.fg0,
+                            ),
+                            icon: const Icon(Icons.link),
+                            label: Text(links.isNotEmpty ? 'Links (${links.length})' : 'Links'),
+                            onPressed: links.isEmpty
+                                ? null
+                                : () => Navigator.of(ctx).push(
+                                      MaterialPageRoute(builder: (_) => const LinksScreen()),
+                                    ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
         ),
-      );
+      ),
+  );
 }
 
 class _MessageBubble extends StatelessWidget {
@@ -260,6 +337,8 @@ class _UserProfilePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final visibleEntries = fields.entries.where((entry) => entry.key != 'recommended_links').toList();
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.all(12),
@@ -268,18 +347,20 @@ class _UserProfilePanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: fields.entries.map((entry) {
-          final label = entry.key.replaceAll('_', ' ');
-          final joined = entry.value.join(', ');
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Text(
-              '$label: $joined',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          );
-        }).toList(),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ...visibleEntries.map((entry) {
+            final label = entry.key.replaceAll('_', ' ');
+            final joined = entry.value.join(', ');
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                '$label: $joined',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            );
+          }),
+        ],
       ),
     );
   }

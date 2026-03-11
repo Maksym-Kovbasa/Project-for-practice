@@ -45,7 +45,7 @@ class SessionErrorBanner extends StatelessWidget {
                     children: [
                       const Icon(Icons.error_outline, color: Colors.white),
                       const SizedBox(width: 10),
-                      Expanded(
+                      Flexible(
                         child: Text(
                           message,
                           style: const TextStyle(color: Colors.white),

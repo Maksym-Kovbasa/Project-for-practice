@@ -130,23 +130,18 @@ class AgentLayoutSwitcher extends StatelessWidget {
         return Stack(
           children: [
             Positioned.fill(
-              child: Padding(
-                padding: EdgeInsets.only(
-                  top: singleCellHeight + topPadding,
-                  bottom: 110,
-                ),
-                child: transcriptionsBuilder(context),
-              ),
-            ),
-            // Overlay for transcriptions
-            Positioned.fill(
-              child: IgnorePointer(
-                child: AnimatedOpacity(
-                  opacity: layoutState.isTranscriptionVisible ? 0.0 : 1.0,
-                  duration: animationDuration,
-                  curve: animationCurve,
-                  child: Container(
-                    color: Theme.of(ctx).canvasColor,
+              child: AnimatedOpacity(
+                opacity: layoutState.isTranscriptionVisible ? 1.0 : 0.0,
+                duration: animationDuration,
+                curve: animationCurve,
+                child: IgnorePointer(
+                  ignoring: !layoutState.isTranscriptionVisible,
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      top: singleCellHeight + topPadding,
+                      bottom: 110,
+                    ),
+                    child: transcriptionsBuilder(context),
                   ),
                 ),
               ),
