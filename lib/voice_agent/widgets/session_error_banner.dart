@@ -28,8 +28,8 @@ class SessionErrorBanner extends StatelessWidget {
           }
         }
 
-        return SafeArea(
-          minimum: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(

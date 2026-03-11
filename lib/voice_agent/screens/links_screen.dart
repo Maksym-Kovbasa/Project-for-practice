@@ -61,13 +61,10 @@ class LinksScreen extends StatelessWidget {
           ),
         ),
         child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 402),
-            child: SafeArea(
-              child: Selector<AppCtrl, List<String>>(
-                selector: (ctx, appCtrl) =>
-                    appCtrl.profileFields['recommended_links'] ?? [],
-                builder: (ctx, links, _) {
+          child: Selector<AppCtrl, List<String>>(
+            selector: (ctx, appCtrl) =>
+                appCtrl.profileFields['recommended_links'] ?? [],
+            builder: (ctx, links, _) {
                   if (links.isEmpty) {
                     return Padding(
                       padding: const EdgeInsets.all(32),
@@ -89,8 +86,6 @@ class LinksScreen extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      ),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'voice_agent/app.dart';
@@ -6,6 +7,17 @@ import 'auth/firestore_auth_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Set system UI to immersive mode to hide status bar symbols
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  
+  // Ensure the status bar is transparent and does not create a black bar
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark,
+    systemNavigationBarColor: Colors.transparent,
+  ));
+
   await Firebase.initializeApp();
   await dotenv.load(fileName: '.env');
   runApp(const MyApp());
@@ -579,10 +591,9 @@ class RegistrationSuccessScreen extends StatelessWidget {
             colors: [Color(0xFFF2F7FF), Color(0xFFE3EBF7)],
           ),
         ),
-        child: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 402),
                 child: Container(
@@ -714,7 +725,6 @@ class RegistrationSuccessScreen extends StatelessWidget {
             ),
           ),
         ),
-      ),
     );
   }
 }
