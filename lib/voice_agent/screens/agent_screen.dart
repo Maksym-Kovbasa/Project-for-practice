@@ -9,7 +9,6 @@ import '../controllers/app_ctrl.dart';
 import '../support/agent_selector.dart';
 import '../widgets/agent_layout_switcher.dart';
 import '../widgets/camera_toggle_button.dart';
-import '../widgets/message_bar.dart';
 
 class AgentTrackView extends StatelessWidget {
   const AgentTrackView({super.key});
@@ -120,6 +119,7 @@ class AgentScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext ctx) => Scaffold(
+        resizeToAvoidBottomInset: true,
         backgroundColor: const Color(0xFFF8FBFF),
         body: Container(
           decoration: const BoxDecoration(
@@ -174,48 +174,7 @@ class AgentScreen extends StatelessWidget {
                       ),
                       child: const Text('Screenshare View'),
                     ),
-                    transcriptionsBuilder: (ctx) => Column(
-                      mainAxisSize: MainAxisSize.max,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => ctx.read<AppCtrl>().messageFocusNode.unfocus(),
-                            child: Consumer<sdk.Session>(
-                              builder: (context, session, _) {
-                                if (session.messages.isEmpty) {
-                                  return _AgentListeningPlaceholder(canListen: session.agent.canListen);
-                                }
-                                return components.ChatScrollView(
-                                  session: session,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                                  physics: const BouncingScrollPhysics(),
-                                  messageBuilder: (context, message) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: _MessageBubble(message: message),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.only(
-                              left: 16,
-                              right: 16,
-                              bottom: max(0, MediaQuery.of(ctx).viewInsets.bottom - 80)),
-                          child: Selector<AppCtrl, bool>(
-                            selector: (ctx, appCtx) => appCtx.isSendButtonEnabled,
-                            builder: (ctx, isSendEnabled, child) => MessageBar(
-                              focusNode: ctx.read<AppCtrl>().messageFocusNode,
-                              isSendEnabled: isSendEnabled,
-                              controller: ctx.read<AppCtrl>().messageCtrl,
-                              onSendTap: () => ctx.read<AppCtrl>().sendMessage(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    transcriptionsBuilder: (ctx) => _ChatPanel(),
                   ),
                 ],
               ),
@@ -223,6 +182,156 @@ class AgentScreen extends StatelessWidget {
           ),
         ),
     );
+}
+
+class _ChatPanel extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: SizedBox(
+        width: 360,
+        child: Column(
+          mainAxisSize: MainAxisSize.max,
+          children: const [
+            Expanded(
+              child: _TranscriptionsCard(),
+            ),
+            SizedBox(height: 25),
+            _ChatMessageBar(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TranscriptionsCard extends StatelessWidget {
+  const _TranscriptionsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<sdk.Session>(
+      builder: (context, session, _) {
+        final hasMessages = session.messages.isNotEmpty;
+        return Container(
+      height: 430,
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 12),
+      decoration: hasMessages
+          ? BoxDecoration(
+              color: const Color(0xFFDEF4FF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF30302F), width: 1),
+            )
+          : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Consumer<sdk.Session>(
+            builder: (context, session, _) =>
+                session.messages.isEmpty ? const SizedBox.shrink() : const _ProfilePanel(),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => context.read<AppCtrl>().messageFocusNode.unfocus(),
+              child: Consumer<sdk.Session>(
+                builder: (context, session, _) {
+                  if (session.messages.isEmpty) {
+                    return const _AgentListeningPlaceholder();
+                  }
+                  return components.ChatScrollView(
+                    session: session,
+                    padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+                    physics: const BouncingScrollPhysics(),
+                    messageBuilder: (context, message) => Padding(
+                      padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+                      child: _MessageBubble(message: message),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+      },
+    );
+  }
+}
+
+class _ProfilePanel extends StatelessWidget {
+  const _ProfilePanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1D24),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          _ProfileChip(
+            dotColor: Color(0xFFFFFFFF),
+            text: 'Your messages',
+            textColor: Color(0xFFFFFFFF),
+          ),
+          SizedBox(height: 6),
+          _ProfileChip(
+            dotColor: Color(0xFF002CF2),
+            text: 'Assistant: Kiefer',
+            textColor: Color(0xFFCCCCCC),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileChip extends StatelessWidget {
+  final Color dotColor;
+  final String text;
+  final Color textColor;
+
+  const _ProfileChip({
+    required this.dotColor,
+    required this.text,
+    required this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0x464D5F54),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            text,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _MessageBubble extends StatelessWidget {
@@ -240,32 +349,26 @@ class _MessageBubble extends StatelessWidget {
     }
 
     final bool isUser = _isUserMessage;
-    final alignment = isUser ? Alignment.centerRight : Alignment.centerLeft;
-    final colorScheme = Theme.of(context).colorScheme;
-    final background = isUser ? colorScheme.primary : colorScheme.surfaceContainerHighest;
-    final foreground = isUser ? colorScheme.onPrimary : colorScheme.onSurfaceVariant;
+    final alignment = Alignment.centerLeft;
+    final background = isUser ? const Color(0xFFFFFFFF) : const Color(0xFF3D5A80);
+    final foreground = isUser ? const Color(0xFF180000) : const Color(0xFFFFFFFF);
 
     return Align(
       alignment: alignment,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFF30302F), width: 1),
         ),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(18),
-              topRight: const Radius.circular(18),
-              bottomLeft: Radius.circular(isUser ? 18 : 4),
-              bottomRight: Radius.circular(isUser ? 4 : 18),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Text(
-              text,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: foreground),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Text(
+            text,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              color: foreground,
             ),
           ),
         ),
@@ -275,37 +378,109 @@ class _MessageBubble extends StatelessWidget {
 }
 
 class _AgentListeningPlaceholder extends StatelessWidget {
-  const _AgentListeningPlaceholder({required this.canListen});
-
-  final bool canListen;
+  const _AgentListeningPlaceholder();
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.graphic_eq, size: 32, color: colorScheme.primary.withValues(alpha: 0.7)),
-          const SizedBox(height: 12),
+        children: const [
+          Icon(Icons.graphic_eq, size: 32, color: Color(0xB33D5A80),),
+          SizedBox(height: 12),
           Text(
             'Agent is listening',
-            style: textTheme.titleMedium?.copyWith(
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 16,
               fontWeight: FontWeight.w600,
+              color: Color(0xFF2D2D2D),
             ),
             textAlign: TextAlign.center,
           ),
-          if (!canListen)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(
-                'Start a conversation to see messages here.',
-                style: textTheme.bodySmall?.copyWith(color: colorScheme.outline),
-                textAlign: TextAlign.center,
+        ],
+      ),
+    );
+  }
+}
+
+class _ChatMessageBar extends StatelessWidget {
+  const _ChatMessageBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SizedBox(
+        height: 60,
+        child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 4, 15, 0),
+        decoration: BoxDecoration(
+          color: const Color(0xFFDEF4FF),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: const Color(0xFF30302F), width: 1),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x40000000),
+              offset: Offset(0, 12),
+              blurRadius: 22,
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Selector<AppCtrl, TextEditingController>(
+                selector: (ctx, appCtrl) => appCtrl.messageCtrl,
+                builder: (ctx, controller, _) => TextField(
+                  controller: controller,
+                  focusNode: ctx.read<AppCtrl>().messageFocusNode,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    hintText: 'Message...',
+                    hintStyle: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 14,
+                      color: Color(0xFF666666),
+                    ),
+                  ),
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 14,
+                    color: Color(0xFF180000),
+                  ),
+                  minLines: 1,
+                  maxLines: 3,
+                ),
               ),
             ),
-        ],
+            const SizedBox(width: 12),
+            Selector<AppCtrl, bool>(
+              selector: (ctx, appCtx) => appCtx.isSendButtonEnabled,
+              builder: (ctx, isSendEnabled, _) => GestureDetector(
+                onTap: isSendEnabled ? () => ctx.read<AppCtrl>().sendMessage() : null,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3D5A80),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_upward,
+                    size: 20,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
       ),
     );
   }

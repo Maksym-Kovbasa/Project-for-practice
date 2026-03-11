@@ -129,17 +129,15 @@ class _CertifiedLinksBodyState extends State<_CertifiedLinksBody> {
   Future<bool> _checkLink(String url) async {
     try {
       final uri = Uri.parse(url);
-      final response =
-          await http.head(uri).timeout(const Duration(seconds: 4));
-      if (response.statusCode >= 200 && response.statusCode < 400) {
-        return true;
-      }
-      if (response.statusCode == 405) {
-        final fallback =
-            await http.get(uri).timeout(const Duration(seconds: 4));
-        return fallback.statusCode >= 200 && fallback.statusCode < 400;
-      }
-      return false;
+      final response = await http
+          .get(
+            uri,
+            headers: const {
+              'Range': 'bytes=0-0',
+            },
+          )
+          .timeout(const Duration(seconds: 5));
+      return response.statusCode >= 200 && response.statusCode < 400;
     } catch (_) {
       return false;
     }

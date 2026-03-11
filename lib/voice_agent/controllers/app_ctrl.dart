@@ -272,9 +272,14 @@ class AppCtrl extends ChangeNotifier {
       if (action == 'profile_sync' || action == 'field_updated') {
         final fields = decoded['fields'];
         if (fields is Map<String, dynamic>) {
-          _profileFields
-            ..clear()
-            ..addAll(_coerceProfileFields(fields));
+          final incoming = _coerceProfileFields(fields);
+          if (action == 'profile_sync') {
+            _profileFields
+              ..clear()
+              ..addAll(incoming);
+          } else {
+            _mergeProfileFields(incoming);
+          }
         } else {
           final field = decoded['field']?.toString();
           final value = decoded['value']?.toString();
@@ -313,6 +318,21 @@ class AppCtrl extends ChangeNotifier {
       }
     });
     return result;
+  }
+
+  void _mergeProfileFields(Map<String, List<String>> incoming) {
+    incoming.forEach((key, values) {
+      final existing = _profileFields[key] ?? <String>[];
+      final seen = existing.map((item) => item.toLowerCase()).toSet();
+      final merged = [...existing];
+      for (final value in values) {
+        final normalized = value.toLowerCase();
+        if (seen.add(normalized)) {
+          merged.add(value);
+        }
+      }
+      _profileFields[key] = merged;
+    });
   }
 
   
