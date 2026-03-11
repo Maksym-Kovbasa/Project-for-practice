@@ -64,22 +64,9 @@ class LinksScreen extends StatelessWidget {
           child: Selector<AppCtrl, List<String>>(
             selector: (ctx, appCtrl) =>
                 appCtrl.profileFields['recommended_links'] ?? [],
-            builder: (ctx, links, _) {
+                builder: (ctx, links, _) {
                   if (links.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Center(
-                        child: Text(
-                          'No certified links yet. Ask the agent for a recommendation.',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.ibmPlexMono(
-                            fontSize: 14,
-                            height: 1.6,
-                            color: const Color(0xFF8C98A6),
-                          ),
-                        ),
-                      ),
-                    );
+                    return const _EmptyLinksBody();
                   }
                   return _CertifiedLinksBody(links: links);
                 },
@@ -173,7 +160,7 @@ class _CertifiedLinksBodyState extends State<_CertifiedLinksBody> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // ── Card 1: Header ──
-                    _buildHeaderCard(),
+                    _buildLinksHeaderCard(context, _entries.length),
                     const SizedBox(height: 16),
 
                     // ── Card 2: Link rows ──
@@ -184,7 +171,7 @@ class _CertifiedLinksBodyState extends State<_CertifiedLinksBody> {
                     const SizedBox(height: 16),
 
                     // ── Card 3: Footer ──
-                    _buildFooterCard(),
+                    _buildLinksFooterCard(),
                   ],
                 ),
               ),
@@ -192,92 +179,6 @@ class _CertifiedLinksBodyState extends State<_CertifiedLinksBody> {
           ),
         );
       },
-    );
-  }
-
-  // ── Header card ──
-  Widget _buildHeaderCard() {
-    final titleStyle = GoogleFonts.sora(
-      fontSize: 22,
-      fontWeight: FontWeight.normal,
-      color: _titleColor,
-    );
-    final badgeStyle = GoogleFonts.ibmPlexMono(
-      fontSize: 12,
-      fontWeight: FontWeight.w500,
-      letterSpacing: 0.3,
-      color: Colors.white,
-    );
-
-    return Container(
-      width: 338,
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: _cardBackground,
-        borderRadius: BorderRadius.circular(_cardRadius),
-        border: Border.all(color: _cardBorder),
-        boxShadow: _cardShadow,
-      ),
-      child: Row(
-        children: [
-          // ── Back Button ──
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: _cardBackground.withOpacity(0.5), // translucent to see blur
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: _cardBorder),
-                  ),
-                  child: const Icon(
-                    Icons.arrow_back_rounded,
-                    size: 22,
-                    color: _titleColor,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          // ── Title and Badge ──
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Text(
-                    'Reference',
-                    style: titleStyle,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: _badgeBackground,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const _BadgeIcon(),
-                      const SizedBox(width: 6),
-                      Text('links (${_entries.length})', style: badgeStyle),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -303,32 +204,6 @@ class _CertifiedLinksBodyState extends State<_CertifiedLinksBody> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: rows,
-      ),
-    );
-  }
-
-  // ── Footer card ──
-  Widget _buildFooterCard() {
-    final footerStyle = GoogleFonts.sora(
-      fontSize: 13,
-      fontWeight: FontWeight.normal,
-      color: _mutedTextColor,
-    );
-
-    return Container(
-      width: 338,
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: _cardBackground,
-        borderRadius: BorderRadius.circular(_cardRadius),
-        border: Border.all(color: _cardBorder),
-        boxShadow: _cardShadow,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Text(
-        'Signed by your voice agent',
-        textAlign: TextAlign.center,
-        style: footerStyle,
       ),
     );
   }
@@ -581,6 +456,63 @@ class _CertifiedLinksBodyState extends State<_CertifiedLinksBody> {
   }
 }
 
+class _EmptyLinksBody extends StatelessWidget {
+  const _EmptyLinksBody();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          clipBehavior: Clip.none,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 35, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildLinksHeaderCard(context, 0),
+                    const SizedBox(height: 24),
+                    _buildEmptyLinksCard(),
+                    const Spacer(),
+                    const SizedBox(height: 24),
+                    _buildLinksFooterCard(),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyLinksCard() {
+    return Container(
+      width: 383,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: _cardBackground,
+        borderRadius: BorderRadius.circular(_cardRadius),
+        border: Border.all(color: _cardBorder),
+        boxShadow: _cardShadow,
+      ),
+      child: Center(
+        child: Text(
+          'No certified links yet. Ask the agent for a recommendation.',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.ibmPlexMono(
+            fontSize: 14,
+            color: const Color(0xFF8C98A6),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ── Small widgets ──
 
 class _BadgeIcon extends StatelessWidget {
@@ -597,6 +529,114 @@ class _BadgeIcon extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget _buildLinksHeaderCard(BuildContext context, int linkCount) {
+  final titleStyle = GoogleFonts.sora(
+    fontSize: 22,
+    fontWeight: FontWeight.normal,
+    color: _titleColor,
+  );
+  final badgeStyle = GoogleFonts.ibmPlexMono(
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.3,
+    color: Colors.white,
+  );
+
+  return Container(
+    width: 338,
+    padding: const EdgeInsets.all(15),
+    decoration: BoxDecoration(
+      color: _cardBackground,
+      borderRadius: BorderRadius.circular(_cardRadius),
+      border: Border.all(color: _cardBorder),
+      boxShadow: _cardShadow,
+    ),
+    child: Row(
+      children: [
+        GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: _cardBackground.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: _cardBorder),
+                ),
+                child: const Icon(
+                  Icons.arrow_back_rounded,
+                  size: 22,
+                  color: _titleColor,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Text(
+                  'Reference',
+                  style: titleStyle,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _badgeBackground,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const _BadgeIcon(),
+                    const SizedBox(width: 6),
+                    Text('links ($linkCount)', style: badgeStyle),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildLinksFooterCard() {
+  final footerStyle = GoogleFonts.sora(
+    fontSize: 13,
+    fontWeight: FontWeight.normal,
+    color: _mutedTextColor,
+  );
+
+  return Container(
+    width: 338,
+    padding: const EdgeInsets.all(15),
+    decoration: BoxDecoration(
+      color: _cardBackground,
+      borderRadius: BorderRadius.circular(_cardRadius),
+      border: Border.all(color: _cardBorder),
+      boxShadow: _cardShadow,
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: Text(
+      'Signed by your voice agent',
+      textAlign: TextAlign.center,
+      style: footerStyle,
+    ),
+  );
 }
 
 class _LinkStatusIndicator extends StatelessWidget {
