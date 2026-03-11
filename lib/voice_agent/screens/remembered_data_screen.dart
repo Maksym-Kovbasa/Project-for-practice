@@ -24,8 +24,20 @@ final _cardShadow = [
   ),
 ];
 
-class RememberedDataScreen extends StatelessWidget {
+class RememberedDataScreen extends StatefulWidget {
   const RememberedDataScreen({super.key});
+  @override
+  State<RememberedDataScreen> createState() => _RememberedDataScreenState();
+}
+class _RememberedDataScreenState extends State<RememberedDataScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AppCtrl>().requestProfileSync();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

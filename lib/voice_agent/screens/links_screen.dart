@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -27,6 +28,12 @@ const _statusIndicatorOpen = Color(0xFF3BC981);
 const _statusIndicatorPending = Color(0xFFFFC266);
 const _statusIndicatorUnavailable = Color(0xFFFF6D72);
 const _inkSplashColor = Color(0xFFB8D0F0);
+const _dialogBackground = Color(0xFFEAF0F8);
+const _dialogBorder = Color(0xFFD6E0EE);
+const _dialogAccent = Color(0xFF20CDBA);
+const _dialogTextPrimary = Color(0xFF22344A);
+const _dialogTextMuted = Color(0xFF7B8A9F);
+const _dialogDanger = Color(0xFFC53D43);
 
 const _cardRadius = 20.0;
 const _cardShadow = [
@@ -345,7 +352,7 @@ class _CertifiedLinksBodyState extends State<_CertifiedLinksBody> {
             : (isLive ? _statusIndicatorOpen : _statusIndicatorUnavailable);
         final onTap = isPending || !isLive
             ? null
-            : () => unawaited(_launchRecommendationLink(entry.url));
+            : () => _showLinkActionDialog(context, entry);
         final statusStyle = GoogleFonts.ibmPlexMono(
           fontSize: 12,
           fontWeight: FontWeight.w500,
@@ -403,6 +410,167 @@ class _CertifiedLinksBodyState extends State<_CertifiedLinksBody> {
                   ],
                 ),
               ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showLinkActionDialog(
+    BuildContext parentContext,
+    _LinkEntry entry,
+  ) async {
+    return showDialog<void>(
+      context: parentContext,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 22),
+            decoration: BoxDecoration(
+              color: _dialogBackground,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: _dialogBorder),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0xFFFFFFFF),
+                  offset: Offset(-8, -8),
+                  blurRadius: 18,
+                ),
+                BoxShadow(
+                  color: Color(0xB5C8D5EA),
+                  offset: Offset(8, 8),
+                  blurRadius: 18,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE7FBF7),
+                    borderRadius: BorderRadius.circular(36),
+                    border: Border.all(color: const Color(0xFFC6EEE7)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x3620CDBA),
+                        offset: Offset(0, 8),
+                        blurRadius: 18,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.link_rounded,
+                    size: 40,
+                    color: _dialogAccent,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'What should we do with this link?',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.sora(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: _dialogTextPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  entry.url,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.ibmPlexMono(
+                    fontSize: 12,
+                    height: 1.4,
+                    color: _dialogTextMuted,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      await Clipboard.setData(ClipboardData(text: entry.url));
+                      Navigator.of(dialogContext).pop();
+                      ScaffoldMessenger.of(parentContext).showSnackBar(
+                        const SnackBar(content: Text('Link copied to clipboard.')),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _dialogAccent,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    child: const Text(
+                      'Copy link',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop();
+                      unawaited(_launchRecommendationLink(entry.url));
+                    },
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: const Color(0xFFEEF3FB),
+                      side: const BorderSide(color: Color(0xFFD6DFED)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      'Open in browser',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: _dialogTextPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Provider.of<AppCtrl>(parentContext, listen: false)
+                          .removeRecommendedLink(entry.url);
+                      Navigator.of(dialogContext).pop();
+                    },
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFF5F5),
+                      side: const BorderSide(color: Color(0xFFF3C7C9)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      'Delete link',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: _dialogDanger,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         );

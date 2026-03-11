@@ -9,6 +9,7 @@ import 'package:livekit_components/livekit_components.dart' as components;
 import 'package:logging/logging.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../exts.dart';
 
 enum AppScreenState { welcome, agent }
 
@@ -97,6 +98,44 @@ class AppCtrl extends ChangeNotifier {
 
   Map<String, List<String>> get profileFields =>
       Map<String, List<String>>.unmodifiable(_profileFields);
+
+  Future<bool> removeRecommendedLink(String url) async {
+    final existing = _profileFields['recommended_links'];
+    if (existing == null || existing.isEmpty) {
+      return false;
+    }
+    final normalizedTarget = _normalizeRecommendationLink(url);
+    final filtered = existing.where((item) {
+      return _normalizeRecommendationLink(item) != normalizedTarget;
+    }).toList();
+    if (filtered.length == existing.length) {
+      return false;
+    }
+    if (filtered.isEmpty) {
+      _profileFields.remove('recommended_links');
+    } else {
+      _profileFields['recommended_links'] = filtered;
+    }
+    notifyListeners();
+
+    final agentIdentity = roomContext.agentParticipant?.identity;
+    if (agentIdentity == null || room.localParticipant == null) {
+      return false;
+    }
+    try {
+      final response = await room.localParticipant!.performRpc(
+        sdk.PerformRpcParams(
+          destinationIdentity: agentIdentity,
+          method: 'client.removeRecommendedLink',
+          payload: jsonEncode({'url': url}),
+        ),
+      );
+      return response == 'ok';
+    } catch (error) {
+      _logger.warning('Failed to remove recommended link from backend: $error');
+      return false;
+    }
+  }
 
   AppCtrl() {
     final format = DateFormat('HH:mm:ss');
@@ -274,5 +313,37 @@ class AppCtrl extends ChangeNotifier {
     });
     return result;
   }
+
+  
+  Future<bool> requestProfileSync() async {
+    final agentIdentity = roomContext.agentParticipant?.identity;
+    if (agentIdentity == null || room.localParticipant == null) {
+      return false;
+    }
+    try {
+      final response = await room.localParticipant!.performRpc(
+        sdk.PerformRpcParams(
+          destinationIdentity: agentIdentity,
+          method: 'client.requestProfileSync',
+          payload: '{}',
+        ),
+      );
+      return response == 'ok';
+    } catch (error) {
+      _logger.warning('Failed to request profile sync: $error');
+      return false;
+    }
+  }
+  static String _normalizeRecommendationLink(String rawLink) {
+    final cleaned = rawLink.trim();
+    if (cleaned.isEmpty) {
+      return '';
+    }
+    if (RegExp(r'^(http|https)://', caseSensitive: false).hasMatch(cleaned)) {
+      return cleaned;
+    }
+    return 'https://$cleaned';
+  }
+
 }
 
