@@ -106,7 +106,8 @@ class AppCtrl extends ChangeNotifier {
     }
     final normalizedTarget = _normalizeRecommendationLink(url);
     final filtered = existing.where((item) {
-      return _normalizeRecommendationLink(item) != normalizedTarget;
+      final itemUrl = _extractRecommendationUrl(item);
+      return _normalizeRecommendationLink(itemUrl) != normalizedTarget;
     }).toList();
     if (filtered.length == existing.length) {
       return false;
@@ -335,7 +336,7 @@ class AppCtrl extends ChangeNotifier {
     }
   }
   static String _normalizeRecommendationLink(String rawLink) {
-    final cleaned = rawLink.trim();
+    final cleaned = _extractRecommendationUrl(rawLink).trim();
     if (cleaned.isEmpty) {
       return '';
     }
@@ -343,6 +344,24 @@ class AppCtrl extends ChangeNotifier {
       return cleaned;
     }
     return 'https://$cleaned';
+  }
+
+  static String _extractRecommendationUrl(String rawLink) {
+    final cleaned = rawLink.trim();
+    if (!cleaned.contains('|||')) {
+      final match = RegExp(r'^(.*?)(?:,|\-|—)?\s*link\s+(.+)$', caseSensitive: false)
+          .firstMatch(cleaned);
+      if (match == null) {
+        return cleaned;
+      }
+      final url = match.group(2)?.trim() ?? '';
+      return url.isNotEmpty ? url : cleaned;
+    }
+    final parts = cleaned.split('|||');
+    if (parts.length < 2) {
+      return cleaned;
+    }
+    return parts.sublist(1).join('|||').trim();
   }
 
 }

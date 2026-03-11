@@ -34,6 +34,7 @@ const _dialogAccent = Color(0xFF20CDBA);
 const _dialogTextPrimary = Color(0xFF22344A);
 const _dialogTextMuted = Color(0xFF7B8A9F);
 const _dialogDanger = Color(0xFFC53D43);
+const _linkDelimiter = '|||';
 
 const _cardRadius = 20.0;
 const _cardShadow = [
@@ -125,10 +126,16 @@ class _CertifiedLinksBodyState extends State<_CertifiedLinksBody> {
 
   void _prepareEntries() {
     _entries = widget.links
-        .map((raw) => _LinkEntry(
-              raw.trim().isEmpty ? 'Link' : raw.trim(),
-              _normalizeRecommendationLink(raw),
-            ))
+        .map((raw) {
+          final parsed = _parseRecommendationLink(raw);
+          final url = _normalizeRecommendationLink(
+            parsed.url.isNotEmpty ? parsed.url : raw,
+          );
+          final label = parsed.title.isNotEmpty
+              ? parsed.title
+              : (parsed.url.isNotEmpty ? parsed.url : 'Link');
+          return _LinkEntry(label, url);
+        })
         .where((entry) => entry.url.isNotEmpty)
         .toList();
     _availability
@@ -618,7 +625,8 @@ class _LinkStatusIndicator extends StatelessWidget {
 // ── Utility functions ──
 
 String _normalizeRecommendationLink(String rawLink) {
-  final cleaned = rawLink.trim();
+  final parsed = _parseRecommendationLink(rawLink);
+  final cleaned = (parsed.url.isNotEmpty ? parsed.url : rawLink).trim();
   if (cleaned.isEmpty) {
     return '';
   }
@@ -626,6 +634,51 @@ String _normalizeRecommendationLink(String rawLink) {
     return cleaned;
   }
   return 'https://$cleaned';
+}
+
+_ParsedLink _parseRecommendationLink(String rawLink) {
+  final cleaned = rawLink.trim();
+  if (cleaned.isEmpty) {
+    return const _ParsedLink('', '');
+  }
+  if (!cleaned.contains(_linkDelimiter)) {
+    final fallback = _parseLegacyRecommendation(cleaned);
+    if (fallback != null) {
+      return fallback;
+    }
+    return _ParsedLink('', cleaned);
+  }
+  final parts = cleaned.split(_linkDelimiter);
+  if (parts.length < 2) {
+    return _ParsedLink('', cleaned);
+  }
+  final title = parts.first.trim();
+  final url = parts.sublist(1).join(_linkDelimiter).trim();
+  return _ParsedLink(title, url);
+}
+
+_ParsedLink? _parseLegacyRecommendation(String rawLink) {
+  final match = RegExp(r'^(.*?)(?:,|\-|—)?\s*link\s+(.+)$', caseSensitive: false)
+      .firstMatch(rawLink);
+  if (match == null) {
+    return null;
+  }
+  final title = match.group(1)?.trim() ?? '';
+  final url = match.group(2)?.trim() ?? '';
+  if (url.isEmpty) {
+    return null;
+  }
+  final normalizedTitle = title
+      .replaceFirst(RegExp(r'^(movie|show|track|album)\s+', caseSensitive: false), '')
+      .trim();
+  return _ParsedLink(normalizedTitle, url);
+}
+
+class _ParsedLink {
+  const _ParsedLink(this.title, this.url);
+
+  final String title;
+  final String url;
 }
 
 Future<void> _launchRecommendationLink(String url) async {
