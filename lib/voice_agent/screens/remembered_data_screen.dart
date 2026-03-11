@@ -54,35 +54,38 @@ class _RememberedDataScreenState extends State<RememberedDataScreen> {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 402),
-            child: SafeArea(
-              child: Selector<AppCtrl, Map<String, List<String>>>(
-                selector: (ctx, appCtrl) => appCtrl.profileFields,
-                builder: (ctx, fields, _) {
+            child: Selector<AppCtrl, Map<String, List<String>>>(
+              selector: (ctx, appCtrl) => appCtrl.profileFields,
+              builder: (ctx, fields, _) {
                   final filteredEntries = fields.entries
                       .where((e) => e.key != 'recommended_links')
                       .toList();
 
                   return LayoutBuilder(
                     builder: (context, constraints) {
+                      final isEmpty = filteredEntries.isEmpty;
+                      final contentPadding = const EdgeInsets.fromLTRB(20, 35, 20, 20);
+                      final sectionSpacing = 24.0;
+
                       return SingleChildScrollView(
                         clipBehavior: Clip.none,
                         child: ConstrainedBox(
                           constraints: BoxConstraints(minHeight: constraints.maxHeight),
                           child: IntrinsicHeight(
                             child: Padding(
-                              padding: const EdgeInsets.all(32),
+                              padding: contentPadding,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   // ── Card 1: Header ──
                                   _buildHeaderCard(context, filteredEntries.length),
-                                  const SizedBox(height: 16),
+                                  SizedBox(height: sectionSpacing),
 
                                   // ── Card 2: Items ──
                                   _buildItemsCard(filteredEntries),
 
                                   const Spacer(),
-                                  const SizedBox(height: 16),
+                                  SizedBox(height: sectionSpacing),
 
                                   // ── Card 3: Footer ──
                                   _buildFooterCard(),
@@ -96,7 +99,6 @@ class _RememberedDataScreenState extends State<RememberedDataScreen> {
                   );
                 },
               ),
-            ),
           ),
         ),
       ),
@@ -196,7 +198,7 @@ class _RememberedDataScreenState extends State<RememberedDataScreen> {
   Widget _buildItemsCard(List<MapEntry<String, List<String>>> entries) {
     if (entries.isEmpty) {
       return Container(
-        width: 338,
+        width: 383,
         padding: const EdgeInsets.all(28),
         decoration: BoxDecoration(
           color: _cardBackground,
