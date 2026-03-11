@@ -1,102 +1,112 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_sficon/flutter_sficon.dart' as sf;
 import 'package:livekit_client/livekit_client.dart' as sdk;
 import 'package:livekit_components/livekit_components.dart' as components;
 import 'package:provider/provider.dart';
 
 import '../app.dart';
 import '../controllers/app_ctrl.dart' show AppCtrl, AgentScreenState;
-import '../ui/color_pallette.dart' show LKColorPaletteLight;
-import 'floating_glass.dart';
+import '../screens/links_screen.dart';
+import '../screens/remembered_data_screen.dart';
 
 class ControlBar extends StatelessWidget {
   const ControlBar({super.key});
 
   @override
-  Widget build(BuildContext ctx) => FloatingGlassView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: 10,
-            horizontal: 10,
-          ),
-          child: Row(
-            spacing: 5,
-            children: [
-              Flexible(
-                flex: 1,
-                fit: FlexFit.tight,
-                child: components.MediaDeviceContextBuilder(
-                  builder: (context, roomCtx, mediaDeviceCtx) => FloatingGlassButton(
-                    sfIcon: mediaDeviceCtx.microphoneOpened
-                        ? sf.SFIcons.sf_microphone_fill
-                        : sf.SFIcons.sf_microphone_slash_fill,
-                    subWidget: components.ParticipantSelector(
-                      filter: (identifier) => identifier.isAudio && identifier.isLocal,
-                      builder: (context, identifier) => const SizedBox(
-                        width: 15,
-                        height: 15,
-                        child: components.AudioVisualizerWidget(
-                          options: components.AudioVisualizerWidgetOptions(
-                            barCount: 5,
-                            spacing: 1,
-                            // color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                      ),
-                    ),
-                    onTap: () {
-                      mediaDeviceCtx.microphoneOpened
-                          ? mediaDeviceCtx.disableMicrophone()
-                          : mediaDeviceCtx.enableMicrophone();
-                    },
-                  ),
-                ),
+  Widget build(BuildContext ctx) => Container(
+        height: 60,
+        padding: const EdgeInsets.fromLTRB(16, 4, 4, 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFDEF4FF),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: const Color(0xFF30302F)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x40000000),
+              blurRadius: 22,
+              offset: Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            components.MediaDeviceContextBuilder(
+              builder: (context, roomCtx, mediaDeviceCtx) => _PanelButton(
+                color: const Color(0xFF3D8059),
+                icon: mediaDeviceCtx.microphoneOpened ? Icons.mic : Icons.mic_off,
+                onTap: () {
+                  mediaDeviceCtx.microphoneOpened
+                      ? mediaDeviceCtx.disableMicrophone()
+                      : mediaDeviceCtx.enableMicrophone();
+                },
               ),
-              Flexible(
-                flex: 1,
-                fit: FlexFit.tight,
-                child: components.MediaDeviceContextBuilder(
-                  builder: (context, roomCtx, mediaDeviceCtx) => FloatingGlassButton(
-                    sfIcon: mediaDeviceCtx.cameraOpened ? sf.SFIcons.sf_video_fill : sf.SFIcons.sf_video_slash_fill,
-                    onTap: () => appCtrl.toggleUserCamera(mediaDeviceCtx),
-                  ),
-                ),
+            ),
+            _PanelButton(
+              color: const Color(0xFF3D5A80),
+              icon: Icons.storage_rounded,
+              onTap: () => Navigator.of(ctx).push(
+                MaterialPageRoute(builder: (_) => const RememberedDataScreen()),
               ),
-              const Flexible(
-                flex: 1,
-                fit: FlexFit.tight,
-                child: FloatingGlassButton(
-                  sfIcon: sf.SFIcons.sf_arrow_up_square_fill,
-                  // onTap: () => appCtrl.toggleScreenShare(),
-                ),
+            ),
+            _PanelButton(
+              color: const Color(0xFF3D5A80),
+              icon: Icons.link,
+              onTap: () => Navigator.of(ctx).push(
+                MaterialPageRoute(builder: (_) => const LinksScreen()),
               ),
-              Selector<AppCtrl, AgentScreenState>(
-                selector: (ctx, appCtx) => appCtx.agentScreenState,
-                builder: (context, agentScreenState, child) => Flexible(
-                  flex: 1,
-                  fit: FlexFit.tight,
-                  child: FloatingGlassButton(
-                    isActive: agentScreenState == AgentScreenState.transcription,
-                    sfIcon: sf.SFIcons.sf_ellipsis_message_fill,
-                    onTap: () => ctx.read<AppCtrl>().toggleAgentScreenMode(),
-                  ),
-                ),
+            ),
+            Selector<AppCtrl, AgentScreenState>(
+              selector: (ctx, appCtx) => appCtx.agentScreenState,
+              builder: (context, agentScreenState, child) => _PanelButton(
+                color: const Color(0xFF3D5A80),
+                icon: Icons.chat_bubble_rounded,
+                width: 39,
+                onTap: () => ctx.read<AppCtrl>().toggleAgentScreenMode(),
               ),
-              Flexible(
-                flex: 1,
-                fit: FlexFit.tight,
-                child: Consumer2<AppCtrl, sdk.Session>(
-                  builder: (context, appCtrlState, session, _) {
-                    final isDisconnected = session.connectionState == sdk.ConnectionState.disconnected;
-                    return FloatingGlassButton(
-                      iconColor: LKColorPaletteLight().fgModerate,
-                      sfIcon: isDisconnected ? sf.SFIcons.sf_phone_fill : sf.SFIcons.sf_phone_down_fill,
-                      onTap: () => isDisconnected ? appCtrlState.connect() : appCtrlState.disconnect(),
-                    );
-                  },
-                ),
-              ),
-            ],
+            ),
+            Consumer2<AppCtrl, sdk.Session>(
+              builder: (context, appCtrlState, session, _) {
+                final isDisconnected = session.connectionState == sdk.ConnectionState.disconnected;
+                return _PanelButton(
+                  color: const Color(0xFFA62525),
+                  icon: isDisconnected ? Icons.call : Icons.call_end,
+                  onTap: () => isDisconnected ? appCtrlState.connect() : appCtrlState.disconnect(),
+                );
+              },
+            ),
+          ],
+        ),
+      );
+}
+
+class _PanelButton extends StatelessWidget {
+  const _PanelButton({
+    required this.color,
+    required this.icon,
+    required this.onTap,
+    this.width = 40,
+  });
+
+  final Color color;
+  final IconData icon;
+  final VoidCallback onTap;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: width,
+        height: 40,
+        child: Material(
+          color: color,
+          borderRadius: BorderRadius.circular(20),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: onTap,
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: 20,
+            ),
           ),
         ),
       );

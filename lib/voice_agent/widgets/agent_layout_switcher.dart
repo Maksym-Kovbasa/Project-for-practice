@@ -187,17 +187,16 @@ class AgentLayoutSwitcher extends StatelessWidget {
               ),
             ),
             // Control bar
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
+            Align(
+              alignment: Alignment.bottomCenter,
               child: Padding(
                 padding: EdgeInsets.only(
-                  left: 20,
-                  right: 20,
                   bottom: max(20, MediaQuery.of(ctx).viewPadding.bottom),
                 ),
-                child: const ControlBar(),
+                child: const SizedBox(
+                  width: 362,
+                  child: ControlBar(),
+                ),
               ),
             ),
           ],
