@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -29,13 +31,53 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Auth UI',
+      title: 'K Assistant',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         scaffoldBackgroundColor: const Color(0xFFE8EEF8),
         useMaterial3: true,
       ),
-      home: const AuthScreen(),
+      home: const SplashScreen(),
+    );
+  }
+}
+
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 900), () {
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const AuthScreen()),
+        );
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFF2F7FF), Color(0xFFE3EBF7)],
+          ),
+        ),
+        child: const Center(
+          child: _KLogo(size: 200),
+        ),
+      ),
     );
   }
 }
@@ -725,6 +767,59 @@ class RegistrationSuccessScreen extends StatelessWidget {
             ),
           ),
         ),
+    );
+  }
+}
+class _KLogo extends StatelessWidget {
+  final double size;
+
+  const _KLogo({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = size / 200;
+    const color = Color(0xFF1A1D24);
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        children: [
+          Positioned(
+            left: 30 * scale,
+            top: 10 * scale,
+            child: Container(
+              width: 40 * scale,
+              height: 180 * scale,
+              color: color,
+            ),
+          ),
+          Positioned(
+            left: 70 * scale,
+            top: 50 * scale,
+            child: Transform.rotate(
+              angle: -35 * math.pi / 180,
+              child: Container(
+                width: 110 * scale,
+                height: 30 * scale,
+                color: color,
+              ),
+            ),
+          ),
+          Positioned(
+            left: 50 * scale,
+            top: 90 * scale,
+            child: Transform.rotate(
+              angle: 35 * math.pi / 180,
+              child: Container(
+                width: 110 * scale,
+                height: 30 * scale,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

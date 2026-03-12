@@ -88,7 +88,7 @@ class _VoiceAssistantAppState extends State<VoiceAssistantApp> {
         child: components.SessionContext(
           session: appCtrl.session,
           child: MaterialApp(
-            title: 'Voice Assistant',
+            title: 'K Assistant',
             theme: buildTheme(isLight: true),
             darkTheme: buildTheme(isLight: false),
             home: Builder(

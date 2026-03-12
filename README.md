@@ -1,18 +1,18 @@
 # Project for Practice
 
-Flutter mobile app with Firebase authentication and an embedded LiveKit voice-agent client.
+Flutter mobile app with Firebase authentication and a LiveKit voice-agent client.
 
 ## Current Architecture
 
 - Frontend: Flutter app in `lib/`
-- Auth: Firebase Auth (+ Firestore-related auth service)
+- Auth: Firebase Auth
 - Voice agent client: `lib/voice_agent/`
 - Agent backend (separate project): `C:\Users\username\voice\agent-starter-node`
 - Persistent memory store: Neon Postgres (handled by backend)
 
 ## Voice Agent Integration
 
-The app launches the voice assistant directly after auth and connects to LiveKit using a sandbox token source.
+The app launches the voice assistant after auth and connects to LiveKit using a sandbox token source.
 
 Key points:
 - Uses authenticated Firebase user `uid` as LiveKit participant identity.
@@ -78,3 +78,4 @@ pnpm run dev
 - App and backend must use compatible LiveKit project credentials.
 - User memory persistence and memory clearing are executed on backend; app reflects state via RPC.
 - If session reconnect behavior changes, verify session lifecycle in `lib/voice_agent/controllers/app_ctrl.dart`.
+- `recommended_links` are stored as structured pairs: `Title ||| url` (sent by the agent as `{ title, url }`).
