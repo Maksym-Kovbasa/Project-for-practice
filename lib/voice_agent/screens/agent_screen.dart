@@ -10,6 +10,8 @@ import '../support/agent_selector.dart';
 import '../widgets/agent_layout_switcher.dart';
 import '../widgets/camera_toggle_button.dart';
 
+const String kAgentName = 'Kiefer';
+
 class AgentTrackView extends StatelessWidget {
   const AgentTrackView({super.key});
 
@@ -283,7 +285,7 @@ class _ProfilePanel extends StatelessWidget {
           SizedBox(height: 6),
           _ProfileChip(
             dotColor: Color(0xFF002CF2),
-            text: 'Assistant: Kiefer',
+            text: 'Assistant: $kAgentName',
             textColor: Color(0xFFCCCCCC),
           ),
         ],
@@ -389,7 +391,7 @@ class _AgentListeningPlaceholder extends StatelessWidget {
           Icon(Icons.graphic_eq, size: 32, color: Color(0xB33D5A80),),
           SizedBox(height: 12),
           Text(
-            'Agent is listening',
+            '$kAgentName is listening',
             style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 16,
