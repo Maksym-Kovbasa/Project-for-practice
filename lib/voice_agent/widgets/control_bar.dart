@@ -9,7 +9,9 @@ import '../screens/links_screen.dart';
 import '../screens/remembered_data_screen.dart';
 
 class ControlBar extends StatelessWidget {
-  const ControlBar({super.key});
+  const ControlBar({super.key, this.iconTurns = 0});
+
+  final int iconTurns;
 
   @override
   Widget build(BuildContext ctx) => Container(
@@ -31,19 +33,29 @@ class ControlBar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             components.MediaDeviceContextBuilder(
-              builder: (context, roomCtx, mediaDeviceCtx) => _PanelButton(
-                color: const Color(0xFF3D8059),
-                icon: mediaDeviceCtx.microphoneOpened ? Icons.mic : Icons.mic_off,
-                onTap: () {
-                  mediaDeviceCtx.microphoneOpened
-                      ? mediaDeviceCtx.disableMicrophone()
-                      : mediaDeviceCtx.enableMicrophone();
-                },
-              ),
+              builder: (context, roomCtx, mediaDeviceCtx) {
+                final appCtrl = context.read<AppCtrl>();
+                final isMicEnabled = mediaDeviceCtx.microphoneOpened;
+                return _PanelButton(
+                  color: const Color(0xFF3D8059),
+                  icon: isMicEnabled ? Icons.mic : Icons.mic_off,
+                  iconTurns: iconTurns,
+                  onTap: () {
+                    final shouldEnable = !isMicEnabled;
+                    if (shouldEnable) {
+                      mediaDeviceCtx.enableMicrophone();
+                    } else {
+                      mediaDeviceCtx.disableMicrophone();
+                    }
+                    appCtrl.room.localParticipant?.setMicrophoneEnabled(shouldEnable);
+                  },
+                );
+              },
             ),
             _PanelButton(
               color: const Color(0xFF3D5A80),
               icon: Icons.storage_rounded,
+              iconTurns: iconTurns,
               onTap: () => Navigator.of(ctx).push(
                 MaterialPageRoute(builder: (_) => const RememberedDataScreen()),
               ),
@@ -51,6 +63,7 @@ class ControlBar extends StatelessWidget {
             _PanelButton(
               color: const Color(0xFF3D5A80),
               icon: Icons.link,
+              iconTurns: iconTurns,
               onTap: () => Navigator.of(ctx).push(
                 MaterialPageRoute(builder: (_) => const LinksScreen()),
               ),
@@ -60,6 +73,7 @@ class ControlBar extends StatelessWidget {
               builder: (context, agentScreenState, child) => _PanelButton(
                 color: const Color(0xFF3D5A80),
                 icon: Icons.chat_bubble_rounded,
+                iconTurns: iconTurns,
                 width: 39,
                 onTap: () => ctx.read<AppCtrl>().toggleAgentScreenMode(),
               ),
@@ -70,6 +84,7 @@ class ControlBar extends StatelessWidget {
                 return _PanelButton(
                   color: const Color(0xFFA62525),
                   icon: isDisconnected ? Icons.call : Icons.call_end,
+                  iconTurns: iconTurns,
                   onTap: () => isDisconnected ? appCtrlState.connect() : appCtrlState.disconnect(),
                 );
               },
@@ -84,12 +99,14 @@ class _PanelButton extends StatelessWidget {
     required this.color,
     required this.icon,
     required this.onTap,
+    this.iconTurns = 0,
     this.width = 40,
   });
 
   final Color color;
   final IconData icon;
   final VoidCallback onTap;
+  final int iconTurns;
   final double width;
 
   @override
@@ -102,10 +119,13 @@ class _PanelButton extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(20),
             onTap: onTap,
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 20,
+            child: RotatedBox(
+              quarterTurns: iconTurns,
+              child: Icon(
+                icon,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
           ),
         ),

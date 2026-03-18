@@ -92,16 +92,28 @@ class _VoiceAssistantAppState extends State<VoiceAssistantApp> {
             theme: buildTheme(isLight: true),
             darkTheme: buildTheme(isLight: false),
             home: Builder(
-              builder: (ctx) => Center(
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 620),
-                  child: const Stack(
+              builder: (ctx) => LayoutBuilder(
+                builder: (ctx, constraints) {
+                  final isLandscape = constraints.maxWidth > constraints.maxHeight;
+                  const content = Stack(
                     children: [
                       AgentScreen(),
                       SessionErrorBanner(),
                     ],
-                  ),
-                ),
+                  );
+                  if (isLandscape) {
+                    return const SizedBox.expand(child: content);
+                  }
+                  return ColoredBox(
+                    color: Theme.of(ctx).scaffoldBackgroundColor,
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 620),
+                        child: content,
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),

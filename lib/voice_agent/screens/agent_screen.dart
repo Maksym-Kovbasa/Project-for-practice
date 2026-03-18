@@ -56,8 +56,8 @@ class AgentTrackView extends StatelessWidget {
                       child: const components.AudioVisualizerWidget(
                         options: components.AudioVisualizerWidgetOptions(
                           barCount: 5,
-                          width: 32,
-                          minHeight: 32,
+                          width: 55,
+                          minHeight: 55,
                           maxHeight: 320,
                           color: Color(0xFF000000),
                         ),
@@ -69,7 +69,7 @@ class AgentTrackView extends StatelessWidget {
             ),
           ),
         ),
-      );
+  );
 }
 
 class FrontView extends StatelessWidget {
@@ -131,54 +131,60 @@ class AgentScreen extends StatelessWidget {
               colors: [Color(0xFFF2F7FF), Color(0xFFE3EBF7)],
             ),
           ),
-          child: Selector<AppCtrl, AgentLayoutState>(
-            selector: (ctx, appCtrl) => AgentLayoutState(
-              isTranscriptionVisible: appCtrl.agentScreenState == AgentScreenState.transcription,
-              isCameraVisible: appCtrl.isUserCameEnabled,
-              isScreenshareVisible: appCtrl.isScreenshareEnabled,
-            ),
-            builder: (ctx, agentLayoutState, child) => SizedBox.expand(
-              child: Stack(
-                children: [
-                  AgentLayoutSwitcher(
-                    layoutState: agentLayoutState,
-                    buildAgentView: (ctx) => const AgentTrackView(),
-                    buildCameraView: (ctx) => Container(
-                      clipBehavior: Clip.hardEdge,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: components.MediaDeviceContextBuilder(
-                        builder: (context, roomCtx, mediaDeviceCtx) => components.ParticipantSelector(
-                          filter: (identifier) => identifier.isVideo && identifier.isLocal,
-                          builder: (context, identifier) => Stack(
-                            children: [
-                              components.VideoTrackWidget(
-                                fit: sdk.VideoViewFit.cover,
-                                noTrackBuilder: (ctx) => Container(color: Theme.of(ctx).cardColor),
-                              ),
-                              Positioned(
-                                right: 10,
-                                bottom: 10,
-                                child: CameraToggleButton(
-                                  onTap: () => mediaDeviceCtx.toggleCameraPosition(),
+          child: OrientationBuilder(
+            builder: (ctx, orientation) => Selector<AppCtrl, AgentLayoutState>(
+              selector: (ctx, appCtrl) => AgentLayoutState(
+                isTranscriptionVisible: appCtrl.agentScreenState == AgentScreenState.transcription,
+                isCameraVisible: appCtrl.isUserCameEnabled,
+                isScreenshareVisible: appCtrl.isScreenshareEnabled,
+              ),
+              builder: (ctx, agentLayoutState, child) => SizedBox.expand(
+                child: Stack(
+                  children: [
+                    AgentLayoutSwitcher(
+                      layoutMode:
+                          orientation == Orientation.landscape ? AgentLayoutMode.landscape : AgentLayoutMode.portrait,
+                      layoutState: agentLayoutState,
+                      buildAgentView: (ctx) => const AgentTrackView(),
+                      buildCameraView: (ctx) => Container(
+                        clipBehavior: Clip.hardEdge,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: components.MediaDeviceContextBuilder(
+                          builder: (context, roomCtx, mediaDeviceCtx) => components.ParticipantSelector(
+                            filter: (identifier) => identifier.isVideo && identifier.isLocal,
+                            builder: (context, identifier) => Stack(
+                              children: [
+                                components.VideoTrackWidget(
+                                  fit: sdk.VideoViewFit.cover,
+                                  noTrackBuilder: (ctx) => Container(color: Theme.of(ctx).cardColor),
                                 ),
-                              ),
-                            ],
+                                Positioned(
+                                  right: 10,
+                                  bottom: 10,
+                                  child: CameraToggleButton(
+                                    onTap: () => mediaDeviceCtx.toggleCameraPosition(),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    buildScreenShareView: (ctx) => Container(
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.3),
+                      buildScreenShareView: (ctx) => Container(
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.3),
+                        ),
+                        child: const Text('Screenshare View'),
                       ),
-                      child: const Text('Screenshare View'),
+                      transcriptionsBuilder: (ctx) => orientation == Orientation.landscape
+                          ? const _ChatPanelLandscape()
+                          : const _ChatPanel(),
                     ),
-                    transcriptionsBuilder: (ctx) => _ChatPanel(),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -187,6 +193,8 @@ class AgentScreen extends StatelessWidget {
 }
 
 class _ChatPanel extends StatelessWidget {
+  const _ChatPanel();
+
   @override
   Widget build(BuildContext context) {
     return Align(
@@ -197,7 +205,7 @@ class _ChatPanel extends StatelessWidget {
           mainAxisSize: MainAxisSize.max,
           children: const [
             Expanded(
-              child: _TranscriptionsCard(),
+              child: _TranscriptionsCard(height: 430),
             ),
             SizedBox(height: 25),
             _ChatMessageBar(),
@@ -208,8 +216,27 @@ class _ChatPanel extends StatelessWidget {
   }
 }
 
+class _ChatPanelLandscape extends StatelessWidget {
+  const _ChatPanelLandscape();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: const [
+        Expanded(
+          child: _TranscriptionsCard(),
+        ),
+        SizedBox(height: 16),
+        _ChatMessageBar(),
+      ],
+    );
+  }
+}
+
 class _TranscriptionsCard extends StatelessWidget {
-  const _TranscriptionsCard();
+  const _TranscriptionsCard({this.height});
+
+  final double? height;
 
   @override
   Widget build(BuildContext context) {
@@ -217,7 +244,7 @@ class _TranscriptionsCard extends StatelessWidget {
       builder: (context, session, _) {
         final hasMessages = session.messages.isNotEmpty;
         return Container(
-      height: 430,
+      height: height,
       padding: const EdgeInsets.fromLTRB(0, 0, 0, 12),
       decoration: hasMessages
           ? BoxDecoration(
