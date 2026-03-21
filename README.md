@@ -7,7 +7,7 @@ Flutter mobile app with Firebase authentication and a LiveKit voice-agent client
 - Frontend: Flutter app in `lib/`
 - Auth: Firebase Auth
 - Voice agent client: `lib/voice_agent/`
-- Agent backend (separate project): `C:\Users\username\voice\agent-starter-node`
+- Agent backend (separate project): [`voice\agent-starter-node`](https://github.com/Maksym-Kovbasa/voice)
 - Persistent memory store: Neon Postgres (handled by backend)
 
 ## Voice Agent Integration
@@ -68,7 +68,7 @@ flutter run
 Run backend agent (separately):
 
 ```bash
-cd C:\Users\username\voice\agent-starter-node
+cd voice\agent-starter-node
 pnpm install
 pnpm run dev
 ```
@@ -79,3 +79,11 @@ pnpm run dev
 - User memory persistence and memory clearing are executed on backend; app reflects state via RPC.
 - If session reconnect behavior changes, verify session lifecycle in `lib/voice_agent/controllers/app_ctrl.dart`.
 - `recommended_links` are stored as structured pairs: `Title ||| url` (sent by the agent as `{ title, url }`).
+
+## 🔗 References
+
+1) [Flutter official documentation](https://flutter.dev)
+2) [Dart documentation](https://dart.dev)
+3) [Firebase documentation](https://firebase.google.com/docs)
+4) [LiveKit documentation](https://docs.livekit.io)
+5) [Google Sign-In](https://developers.google.com/identity)
